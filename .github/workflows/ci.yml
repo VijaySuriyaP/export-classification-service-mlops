@@ -66,7 +66,7 @@ jobs:
           docker compose ps | tee evidence/compose-ps-1-worker.txt
 
       - name: Smoke test - 1 worker (all checks)
-        run: python scripts/smoke_test.py --wait 120 | tee evidence/smoke-1-worker.txt
+        run: python scripts/smoke_test.py --wait 120 --label 1-worker | tee evidence/smoke-1-worker.txt
 
       - name: Scale agent-worker to 3
         run: |
@@ -74,7 +74,7 @@ jobs:
           docker compose ps | tee evidence/compose-ps-3-workers.txt
 
       - name: Smoke test - 3 workers (run, breaker, scale)
-        run: python scripts/smoke_test.py --only run,breaker,scale --expect-workers 3 | tee evidence/smoke-3-workers.txt
+        run: python scripts/smoke_test.py --only run,breaker,scale --expect-workers 3 --label 3-workers | tee evidence/smoke-3-workers.txt
 
       - name: Resource snapshot
         if: always()

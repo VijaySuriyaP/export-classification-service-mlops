@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -249,7 +250,12 @@ class Smoke:
             except Exception as exc:  # noqa: BLE001
                 detail, passed = f"{type(exc).__name__}: {exc}", False
             self.results.append((name, passed, detail))
-            print(f"{'PASS' if passed else 'FAIL'}  {name:<14} {detail}  ({time.monotonic() - started:.1f}s)", flush=True)
+            elapsed = time.monotonic() - started
+            print(f"{'PASS' if passed else 'FAIL'}  {name:<14} {detail}  ({elapsed:.1f}s)", flush=True)
+            if os.environ.get("GITHUB_ACTIONS"):  # also show on the PR checks page (readable without logs)
+                level = "notice" if passed else "error"
+                text = f"{'PASS' if passed else 'FAIL'}: {detail} ({elapsed:.1f}s)".replace("\n", " ").replace("%", "%25")
+                print(f"::{level} title=smoke {self.a.label}/{name}::{text}", flush=True)
         failed = [n for n, ok, _ in self.results if not ok]
         print(f"\n{len(self.results) - len(failed)}/{len(self.results)} checks passed" + (f"; FAILED: {failed}" if failed else ""))
         return 1 if failed else 0
@@ -269,6 +275,7 @@ def main() -> int:
     p.add_argument("--wait", type=float, default=60, help="seconds to wait for the API to become ready")
     p.add_argument("--only", default="", help="comma-separated checks to run")
     p.add_argument("--skip", default="", help="comma-separated checks to skip")
+    p.add_argument("--label", default="stack", help="name for this run in CI annotations, e.g. '1-worker'")
     return Smoke(p.parse_args()).run()
 
 
