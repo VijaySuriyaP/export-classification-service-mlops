@@ -175,10 +175,25 @@ Rules for agent and retrieval code:
   * Only results produced by the agents are cached. Degraded or failed runs are not.
   * Effect on p95 and on cost per run: still to be measured (planned).
 
-## 9. Not done yet (platform side)
+## 9. Verification status
 
-* Measurements with Docker Compose: the scaling effect, Locust results against the SLO in `docs/slo.md`, and the
-  cache effect.
+Verified (automated, repeatable):
+* `pytest` (unit and integration, no Docker): contracts, validation and quarantine, rate limiting, queue and
+  worker, resilience, Redis-outage behaviour, output policy, and static consistency of the dashboard, `.env.example`,
+  Compose and Prometheus config.
+* **CI** (`.github/workflows/ci.yml`) on every push and PR: builds all images and starts the stack with a single
+  `docker compose up --build --wait` from a clean checkout, then runs `scripts/smoke_test.py` with 1 worker and again
+  after scaling to 3. The smoke test checks health and readiness, a full run and its event log, quarantine with no
+  run created, prompt-injection rejection, the rate limit, the circuit breaker (down, fail-fast, recovery),
+  Prometheus targets for 3 replicas, the provisioned Grafana dashboard, and a single Jaeger trace spanning `api` and
+  `agent-worker`. Each result appears as an annotation on the PR checks page and in the uploaded `stack-evidence`
+  artifact.
+
+Run it locally against a running stack with `python scripts/smoke_test.py --expect-workers 1`.
+
+Not done yet (platform side):
+* Measurements: the scaling effect and Locust results against the declared SLO (procedure and tooling in
+  `docs/loadtest.md`; waiting for the team to declare the SLO and for the real agents), and the cache effect.
 * Feedback endpoint (L6). It belongs with the web client's feedback flow; the API side is agreed with the web-client
   owner.
 * Real provider configuration (free tier) once the agents are integrated.

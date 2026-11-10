@@ -2,6 +2,8 @@
 
 **Status:** PROPOSED by the platform workstream on 2026-11-10. It needs team sign-off before the first load test.
 No load test has been run yet. Once the team agrees, this target must not change after results are seen.
+To declare it, set `"status": "DECLARED"` (plus `declared_at` and `declared_by`) in `loadtest/slo.json` and commit
+before measuring; `scripts/run_loadtest.py` refuses to run otherwise. Procedure: [`loadtest.md`](loadtest.md).
 
 ## Objective
 
