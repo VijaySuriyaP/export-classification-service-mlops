@@ -92,6 +92,17 @@ def create_app(settings: Settings | None = None, redis_client: redis.Redis | Non
                            allow_headers=["Content-Type", "X-Correlation-ID", "X-Client-ID"],
                            expose_headers=["X-Correlation-ID", "Location", "Retry-After"])
 
+    @app.exception_handler(redis.RedisError)
+    async def redis_unavailable(request: Request, exc: redis.RedisError) -> JSONResponse:
+        """Queue backend down: fail cleanly and fast. Nothing was created, so the caller can retry."""
+        metrics.REDIS_ERRORS.labels("api").inc()
+        log.error("redis unavailable", extra={"error": type(exc).__name__})
+        return JSONResponse(
+            status_code=503, headers={"Retry-After": "5"},
+            content={"error": "service_unavailable", "retry_after_s": 5,
+                     "detail": "queue backend unavailable; no run was created or changed"},
+        )
+
     @app.middleware("http")
     async def correlation_and_metrics(request: Request, call_next):
         supplied = request.headers.get("x-correlation-id", "")

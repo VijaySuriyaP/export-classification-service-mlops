@@ -12,8 +12,14 @@ VACUUM_FLASK = "Stainless steel vacuum flask with a moulded plastic outer body."
 
 
 @pytest.fixture
-def redis_client():
-    return fakeredis.FakeRedis(decode_responses=True)
+def redis_server():
+    """Set ``redis_server.connected = False`` to simulate a Redis outage."""
+    return fakeredis.FakeServer()
+
+
+@pytest.fixture
+def redis_client(redis_server):
+    return fakeredis.FakeRedis(server=redis_server, decode_responses=True)
 
 
 @pytest.fixture

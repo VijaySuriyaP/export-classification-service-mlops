@@ -2,3 +2,4 @@
 -r worker.txt
 pytest==9.2.0
 fakeredis==2.40.0
+pyyaml==6.0.3

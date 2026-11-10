@@ -54,6 +54,11 @@ class Worker:
         self.prompt_version = getattr(runner, "prompt_version", "unknown")
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="agent")
         self._stop = False
+        self.poll_timeout_s = 2.0
+        self._sleep = time.sleep
+        self._needs_requeue = False
+        self._redis_backoff = 0.0
+        self._last_reap = 0.0
 
     # ------------------------------------------------------------------ loop
     def stop(self, *_: Any) -> None:
@@ -61,29 +66,65 @@ class Worker:
         self._stop = True
 
     def run_forever(self) -> None:
+        self._needs_requeue = True  # recover anything a previous instance left in our processing list
+        while not self._stop:
+            self.loop_iteration()
+
+    def loop_iteration(self) -> None:
+        """One pass of the worker loop.
+
+        A Redis outage never kills the worker: it backs off exponentially and keeps retrying. A run
+        that was in flight when Redis went away stays in this worker's processing list and is
+        requeued once Redis is back. Re-running it is safe: a run already in a terminal state is
+        skipped, and an unfinished one is retried up to ``RUN_MAX_ATTEMPTS``.
+        """
+        try:
+            if self._needs_requeue:
+                self._requeue_own_jobs()
+                self._needs_requeue = False
+            self._housekeeping()
+            raw = self.store.dequeue(self.worker_id, timeout_s=self.poll_timeout_s)
+        except redis.RedisError as exc:
+            self._on_redis_error(exc)
+            return
+        self._redis_backoff = 0.0
+        if raw is None:
+            return
+        try:
+            self.process(json.loads(raw))
+        except redis.RedisError as exc:
+            self._on_redis_error(exc)  # job stays in the processing list until Redis recovers
+            return
+        except Exception:  # never let one bad job kill the worker
+            log.exception("unhandled error processing job")
+        try:
+            self.store.ack(self.worker_id, raw)
+        except redis.RedisError as exc:
+            self._on_redis_error(exc)
+
+    def _requeue_own_jobs(self) -> None:
         recovered = self.store.requeue_processing(self.worker_id)
         if recovered:
             metrics.RUNS_REQUEUED.inc(recovered)
-            log.warning("requeued runs left by a previous instance", extra={"count": recovered})
-        last_reap = 0.0
-        while not self._stop:
-            self.store.heartbeat(self.worker_id, self.settings.worker_heartbeat_ttl_s)
-            if time.monotonic() - last_reap > self.settings.worker_heartbeat_ttl_s:
-                reaped = self.store.reap_dead_workers()
-                if reaped:
-                    metrics.RUNS_REQUEUED.inc(reaped)
-                    log.warning("requeued runs from dead workers", extra={"count": reaped})
-                last_reap = time.monotonic()
-            metrics.QUEUE_DEPTH.set(self.store.queue_depth())
-            raw = self.store.dequeue(self.worker_id, timeout_s=2)
-            if raw is None:
-                continue
-            try:
-                self.process(json.loads(raw))
-            except Exception:  # never let one bad job kill the worker
-                log.exception("unhandled error processing job")
-            finally:
-                self.store.ack(self.worker_id, raw)
+            log.warning("requeued unfinished runs from this worker", extra={"count": recovered})
+
+    def _housekeeping(self) -> None:
+        self.store.heartbeat(self.worker_id, self.settings.worker_heartbeat_ttl_s)
+        if time.monotonic() - self._last_reap > self.settings.worker_heartbeat_ttl_s:
+            reaped = self.store.reap_dead_workers()
+            if reaped:
+                metrics.RUNS_REQUEUED.inc(reaped)
+                log.warning("requeued runs from dead workers", extra={"count": reaped})
+            self._last_reap = time.monotonic()
+        metrics.QUEUE_DEPTH.set(self.store.queue_depth())
+
+    def _on_redis_error(self, exc: Exception) -> None:
+        metrics.REDIS_ERRORS.labels("worker").inc()
+        self._needs_requeue = True
+        self._redis_backoff = min(10.0, max(0.5, self._redis_backoff * 2))
+        log.error("redis unavailable; backing off", extra={"error": type(exc).__name__,
+                                                          "retry_in_s": self._redis_backoff})
+        self._sleep(self._redis_backoff)
 
     # ------------------------------------------------------------------ one run
     def process(self, job: dict[str, Any]) -> None:
