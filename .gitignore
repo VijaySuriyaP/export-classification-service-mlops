@@ -1,0 +1,28 @@
+# Secrets / local config — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local data / artefacts
+data/
+*.log
+loadtest/results/
+
+# Course brief (kept locally, not part of the repository)
+MiniProject_07_Export_Classification_Check.pdf
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

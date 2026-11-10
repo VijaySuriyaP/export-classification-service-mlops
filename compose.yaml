@@ -1,0 +1,144 @@
+# Export Classification Check Service - local deployment (D3).
+#
+#   cp .env.example .env          # Windows: Copy-Item .env.example .env
+#   docker compose up --build
+#   docker compose up --build --scale agent-worker=3      # A7
+#   docker compose --profile loadtest up locust            # D6
+#
+# Deployment boundaries (justification in docs/platform.md):
+#   api           - light, latency-sensitive, stateless; scales/release independently of agents
+#   agent-worker  - heavy (models, embeddings, index), long-running; the unit we scale (A7)
+#   redis         - queue + run state; isolates submission from execution
+#   llm-stub      - stands in for the model provider in load tests and failure demos
+#   prometheus / grafana / jaeger / redis-exporter - observability, isolated from the request path
+
+name: export-classification
+
+x-app-env: &app-env
+  env_file:
+    - .env
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  llm-stub:
+    build:
+      context: .
+      dockerfile: docker/llm-stub.Dockerfile
+    <<: *app-env
+    ports:
+      - "${LLM_STUB_PORT:-8001}:8001"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    <<: *app-env
+    environment:
+      SERVICE_NAME: api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  agent-worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    <<: *app-env
+    environment:
+      SERVICE_NAME: agent-worker
+    # no container_name / host ports, so `--scale agent-worker=N` works
+    depends_on:
+      redis:
+        condition: service_healthy
+      llm-stub:
+        condition: service_healthy
+    stop_grace_period: 60s
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - api
+      - agent-worker
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    <<: *app-env
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/ecs-overview.json
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    restart: unless-stopped
+
+  locust:
+    image: locustio/locust:2.32.2
+    profiles: ["loadtest"]
+    <<: *app-env
+    command: ["-f", "/mnt/locust/locustfile.py", "--host", "http://api:8000"]
+    volumes:
+      - ./loadtest:/mnt/locust
+    ports:
+      - "${LOCUST_PORT:-8089}:8089"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
