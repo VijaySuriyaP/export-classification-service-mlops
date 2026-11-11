@@ -1,0 +1,4 @@
+-r base.txt
+fastapi==0.162.2
+uvicorn[standard]==0.54.0
+opentelemetry-instrumentation-fastapi==0.66b2

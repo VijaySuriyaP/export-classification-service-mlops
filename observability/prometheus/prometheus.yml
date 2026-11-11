@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: api
+    static_configs:
+      - targets: ["api:8000"]
+
+  # DNS discovery returns every replica, so `--scale agent-worker=3` is scraped automatically.
+  - job_name: agent-worker
+    dns_sd_configs:
+      - names: ["agent-worker"]
+        type: A
+        port: 9100
+        refresh_interval: 10s
+
+  - job_name: llm-stub
+    static_configs:
+      - targets: ["llm-stub:8001"]
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+
+  - job_name: jaeger
+    static_configs:
+      - targets: ["jaeger:14269"]
+
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -1,0 +1,9 @@
+{
+  "status": "PROPOSED",
+  "declared_at": null,
+  "declared_by": null,
+  "note": "Set status to DECLARED (with declared_at and declared_by) once the team agrees, BEFORE any measured run. scripts/run_loadtest.py refuses to measure while status is PROPOSED. Rationale: docs/slo.md.",
+  "complete_run_p95_ms": 60000,
+  "submit_p95_ms": 300,
+  "max_failure_rate": 0.01
+}
