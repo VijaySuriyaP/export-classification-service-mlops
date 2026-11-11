@@ -133,12 +133,56 @@ Returns `{"run": <status response>, "events": [...]}`. Event `kind`s in order of
 
 Spans for the same run are in Jaeger under `trace_id`.
 
+## Feedback (L6)
+
+Owner: web client workstream. A reviewer rates a **finished** run; the entry is stamped with the run's `route`,
+`hs_code` and `prompt_version`, so feedback can be compared across prompt versions and over time.
+
+### `POST /runs/{run_id}/feedback`
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `rating` | `"up"` \| `"down"` | **yes** | |
+| `reasons` | string[] | no | Any of `wrong_hs_code`, `wrong_route`, `citation_problem`, `missing_notes`, `unclear_explanation`, `too_slow`, `other`. Duplicates removed. |
+| `comment` | string | no | ≤ 1000 chars, no control characters. Stored for humans; **never sent to a model**. |
+| `suggested_hs_code` | string | no | 4, 6 or 8 digits. |
+| `reviewer` | string | no | ≤ 64 chars `[A-Za-z0-9._ -]`. |
+
+Unknown fields are rejected. One entry per (run, `X-Client-ID`): rating the same run again replaces the earlier
+entry, so a reviewer cannot double-count.
+
+| Status | Body |
+|---|---|
+| `201` | `{"feedback_id": "…", "run_id": "…", "replaced_previous": false}` |
+| `404` | `{"error": "not_found", "run_id": "…"}`: unknown or expired run. |
+| `409` | `{"error": "run_not_finished", "run_id": "…", "status": "running"}` |
+| `422` | `{"error": "validation_failed", "correlation_id": "…", "errors": [{"field", "message", "type"}]}`. Not quarantined: no run is involved. |
+
+### `GET /runs/{run_id}/feedback`
+
+`{"run_id": "…", "items": [<feedback record>, …]}`, oldest first.
+
+### `GET /feedback/summary?recent=10`
+
+```json
+{
+  "total": {"total": 12, "up": 9, "down": 3, "satisfaction": 0.75},
+  "by_prompt_version": {"classifier-v1": {"total": 5, "up": 3, "down": 2, "satisfaction": 0.6}, "classifier-v2": {…}},
+  "by_route": {"clear-for-filing": {…}, "specialist-classification-review": {…}},
+  "by_day": {"2026-11-10": {…}, "2026-11-11": {…}},
+  "reasons": {"missing_notes": 2, "wrong_hs_code": 1},
+  "recent": [<feedback record>, …]
+}
+```
+
+Feedback does not expire with the run. Prometheus counter: `ecs_feedback_total{rating, prompt_version}`.
+
 ## Operational endpoints
 
 | Path | Purpose |
 |---|---|
 | `GET /health` | Liveness (process up). |
-| `GET /ready` | Readiness (Redis reachable); `503` otherwise. |
+| `GET /ready` | Readiness (Redis reachable); `503` otherwise. The body also has `queue_depth` and `workers_alive` (agent-workers with a live heartbeat). `workers_alive: 0` does **not** make the API unready, because it can still accept and queue runs, but those runs will not progress until a worker starts (see `docs/incident-log.md`, INC-001). |
 | `GET /metrics` | Prometheus exposition. |
 | `GET /quarantine?limit=20` | Most recent rejected requests with their field errors and raw body (truncated to 4 KB). |
 | `GET /contract` | JSON Schemas for request, result, run status and validation error. |

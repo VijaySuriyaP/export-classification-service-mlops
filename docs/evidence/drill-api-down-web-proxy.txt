@@ -1,0 +1,16 @@
+# Drill D: api container down/recreated behind the web proxy  2026-11-11T06:37:24Z
+$ docker inspect api IP before
+172.19.0.5
+$ docker compose stop api
+ Container export-classification-api-1 Stopped 
+$ curl -i localhost:8080/healthz
+HTTP/1.1 200 OK
+$ curl -i localhost:8080/api/health
+HTTP/1.1 502 Bad Gateway
+$ docker compose up -d --force-recreate --no-deps api   (new container, possibly new IP)
+ Container export-classification-api-1 Healthy 
+api IP after:
+172.19.0.5
+$ curl localhost:8080/api/health   (web NOT restarted)
+HTTP/1.1 200 OK
+{"status":"ok","version":"0.1.0"}

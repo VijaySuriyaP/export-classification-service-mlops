@@ -194,6 +194,7 @@ Run it locally against a running stack with `python scripts/smoke_test.py --expe
 Not done yet (platform side):
 * Measurements: the scaling effect and Locust results against the declared SLO (procedure and tooling in
   `docs/loadtest.md`; waiting for the team to declare the SLO and for the real agents), and the cache effect.
-* Feedback endpoint (L6). It belongs with the web client's feedback flow; the API side is agreed with the web-client
-  owner.
+* ~~Feedback endpoint (L6)~~: done by the web-client workstream. `POST /runs/{id}/feedback`,
+  `GET /feedback/summary` ([`api-contract.md`](api-contract.md#feedback-l6)), and the `web` service (browser
+  client + same-origin `/api/` proxy). `/ready` now also reports `workers_alive` (INC-001). Please review.
 * Real provider configuration (free tier) once the agents are integrated.
