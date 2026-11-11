@@ -1,0 +1,11 @@
+PASS  ready          /health and /ready ok, queue_depth=0, workers_alive=2  (0.1s)
+PASS  run            run bd2b7b4d escalated route=specialist-classification-review e2e=0.203s events=10 trace_id=bdafb01e9c9a2b817d301362da1f5a13  (0.4s)
+PASS  web            page + assets served with CSP; /api/ proxy ok (ready, submit 202, poll running)  (0.1s)
+PASS  feedback       409 before finish=True; 201 after (7a71b2f6); 422 on bad rating; summary total=5, by prompt version: ['stub-v0']  (0.5s)
+PASS  malformed      422 with field errors, quarantine_id=a4c9c413, runs_submitted unchanged at 3  (0.1s)
+PASS  injection      prompt-injection attempt rejected at the boundary (422, no run)  (0.0s)
+PASS  ratelimit      429 after 30 requests with Retry-After=17s; other client unaffected  (0.8s)
+PASS  breaker        provider down: 3 runs escalated (never answered), 'circuit open' fail-fast seen on run 3; after recovery a model call succeeded on run 1  (7.2s)
+PASS  observability  prometheus scraping api/agent-worker/llm-stub; run metrics present; grafana dashboard provisioned; jaeger trace 642abf7d spans api + agent-worker  (0.2s)
+
+9/9 checks passed

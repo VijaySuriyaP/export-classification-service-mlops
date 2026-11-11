@@ -1,0 +1,22 @@
+# Drill B: all workers stopped -> backlog -> recovery  2026-11-11T04:57:39Z
+$ curl -s localhost:8000/feedback/summary  (after the Redis restart in drill A: feedback persisted via AOF)
+feedback total = {'total': 2, 'up': 0, 'down': 2, 'satisfaction': 0.0}
+
+$ docker compose stop agent-worker
+ Container export-classification-agent-worker-3 Stopped 
+submitted 3 runs; after 3 s:
+91c070a6 queued attempts=0
+a40723f1 queued attempts=0
+20914242 queued attempts=0
+$ curl localhost:8000/ready
+{"status":"ready","redis":"ok","queue_depth":3}
+$ curl -s 'localhost:9090/api/v1/query?query=max(ecs_queue_depth)'
+[1794373079.349, '3']
+
+$ docker compose start agent-worker
+ Container export-classification-agent-worker-1 Started 
+91c070a6 escalated attempts=1
+a40723f1 escalated attempts=1
+20914242 escalated attempts=1
+$ curl localhost:8000/ready
+{"status":"ready","redis":"ok","queue_depth":0}

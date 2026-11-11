@@ -1,0 +1,11 @@
+# 2026-11-11T06:38:39Z  final run, all changes built
+SERVICE          STATUS                        PORTS
+agent-worker     Up 6 seconds (healthy)        9100/tcp
+api              Up About a minute (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+grafana          Up 2 hours                    0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+jaeger           Up 2 hours                    0.0.0.0:16686->16686/tcp, [::]:16686->16686/tcp
+llm-stub         Up 2 hours (healthy)          0.0.0.0:8001->8001/tcp, [::]:8001->8001/tcp
+prometheus       Up 2 hours (healthy)          0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+redis            Up 2 hours (healthy)          6379/tcp
+redis-exporter   Up 2 hours                    9121/tcp
+web              Up 2 hours (healthy)          0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp

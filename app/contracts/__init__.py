@@ -1,5 +1,12 @@
 """Published data contracts shared by the API, the worker and the agents (D1, F1)."""
 
+from app.contracts.feedback import (
+    FeedbackAck,
+    FeedbackBucket,
+    FeedbackRecord,
+    FeedbackRequest,
+    FeedbackSummary,
+)
 from app.contracts.requests import SUPPORTED_CHAPTERS, RunRequest
 from app.contracts.results import (
     DISCLAIMER,
@@ -22,6 +29,11 @@ from app.contracts.runs import (
 )
 
 __all__ = [
+    "FeedbackAck",
+    "FeedbackBucket",
+    "FeedbackRecord",
+    "FeedbackRequest",
+    "FeedbackSummary",
     "SUPPORTED_CHAPTERS",
     "RunRequest",
     "DISCLAIMER",

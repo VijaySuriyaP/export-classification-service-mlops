@@ -1,0 +1,12 @@
+SERVICE          NAME                                     STATUS
+agent-worker     export-classification-agent-worker-1     Up 44 seconds (healthy)
+agent-worker     export-classification-agent-worker-2     Up 6 seconds (healthy)
+agent-worker     export-classification-agent-worker-3     Up 6 seconds (healthy)
+api              export-classification-api-1              Up 45 seconds (healthy)
+grafana          export-classification-grafana-1          Up 33 seconds
+jaeger           export-classification-jaeger-1           Up 50 seconds
+llm-stub         export-classification-llm-stub-1         Up 50 seconds (healthy)
+prometheus       export-classification-prometheus-1       Up 44 seconds (healthy)
+redis            export-classification-redis-1            Up 51 seconds (healthy)
+redis-exporter   export-classification-redis-exporter-1   Up 45 seconds
+web              export-classification-web-1              Up 39 seconds (healthy)

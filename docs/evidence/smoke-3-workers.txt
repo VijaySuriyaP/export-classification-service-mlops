@@ -1,0 +1,7 @@
+PASS  run            run 6d887be3 escalated route=specialist-classification-review e2e=0.186s events=10 trace_id=26309a3fa042a23d69138759ba0bc498  (0.3s)
+PASS  web            page + assets served with CSP; /api/ proxy ok (ready, submit 202, poll running)  (0.1s)
+PASS  feedback       409 before finish=True; 201 after (116c3c49); 422 on bad rating; summary total=2, by prompt version: ['stub-v0']  (0.4s)
+PASS  breaker        provider down: 7 runs escalated (never answered), 'circuit open' fail-fast seen on run 7; after recovery a model call succeeded on run 1  (8.0s)
+PASS  scale          3 worker targets up in Prometheus; 3 distinct worker(s) executed 9 runs  (0.7s)
+
+5/5 checks passed

@@ -3,7 +3,14 @@
 **Course:** UE24AM342AA5 — ML System Design and AgentOps  
 **Domain:** Logistics and Trade Compliance  
 **Project level:** Jackfruit (Level 3)  
-**Repository status:** Execution plan / implementation checklist
+**Repository status:** Platform, API, web client and feedback flow are implemented and tested. The classification
+agents and corpus retrieval are in progress: until they land, the stub agent runner **always escalates and never
+classifies**.
+
+**Quick links:** [Setup guide](#10-local-setup-and-execution) · [API contract](docs/api-contract.md) ·
+[Platform design](docs/platform.md) · [Runbook](docs/runbook.md) · [Incident log](docs/incident-log.md) ·
+[Test matrix](docs/test-matrix.md) · [Demo checklist](docs/demo-checklist.md) · [Evidence](docs/evidence/README.md) ·
+[SLO](docs/slo.md) · [Load test](docs/loadtest.md)
 
 ## 1. Project Overview
 
@@ -119,32 +126,32 @@ Prioritise a working end-to-end path by the end of **Week 2**, as the brief requ
 
 Track implementation honestly. Do not mark a requirement complete until there is code plus test/evidence.
 
-- [ ] **F1** — Documented REST interface and published data contract.
-- [ ] **F2 / D1** — Boundary validation; rejected requests quarantined with field-level errors before agents start.
+- [x] **F1** — Documented REST interface and published data contract. *(docs/api-contract.md, `GET /contract`, `/docs`)*
+- [x] **F2 / D1** — Boundary validation; rejected requests quarantined with field-level errors before agents start.
 - [ ] **F3** — Identify the article and extract materials/entities needed for classification.
 - [ ] **F4** — Retrieve candidate headings, including headings that name the article, with relevant notes.
 - [ ] **F5** — Proposed classification grounded in the retrieved rule, heading and notes, with resolving citations.
 - [ ] **F6** — Route to `clear-for-filing`, `seek-product-clarification`, or `specialist-classification-review`, with the basis stated.
 - [ ] **F7** — Escalate when equally supported headings remain after GRI 3 or when the product is outside the supported chapters.
-- [ ] **F8** — Health, metrics and structured logs for the pipeline.
+- [x] **F8** — Health, metrics and structured logs for the pipeline.
 
 ## 7. Agent and LLMOps Checklist
 
 - [ ] **A1–A3** — LangGraph/CrewAI reasoning layer; retrieval is an agent-callable tool; at least three tools; bounded loop; two agents with a documented hand-off; verify every answer and citation before returning it.
-- [ ] **A4–A5** — FastAPI asynchronous run submission and queue; timeouts, bounded retry with exponential backoff, circuit breaker and graceful fallback.
-- [ ] **A6–A8** — Per-agent success/steps/tool calls/latency/retry/uptime metrics; worker scaling measurement; simple browser client.
+- [x] **A4–A5** — FastAPI asynchronous run submission and queue; timeouts, bounded retry with exponential backoff, circuit breaker and graceful fallback.
+- [ ] **A6–A8** — Per-agent success/steps/tool calls/latency/retry/uptime metrics; worker scaling measurement; simple browser client. *(A6 metrics and A8 browser client done; A7 scaling **measurement** waits for the load test)*
 - [ ] **L1–L2** — LangChain/LlamaIndex retrieval and FAISS/Chroma indexing; documented chunking/embedding; re-embedding without rebuilding everything; versioned prompts and comparison of at least two variants.
 - [ ] **L3** — At least 20 fixed evaluation scenarios, runnable from CLI, with expected outcome and evidence passage; report groundedness, context relevance, faithfulness and hallucination rate before/after a deliberate change.
-- [ ] **L4–L6** — Prompt-injection defence for free text, output filtering and toxicity detection; token/cost accounting; feedback endpoint and quality-over-time tracking.
+- [ ] **L4–L6** — Prompt-injection defence for free text, output filtering and toxicity detection; token/cost accounting; feedback endpoint and quality-over-time tracking. *(done: injection screen, structural output policy, token/cost, feedback endpoint + summary by prompt version/day; open: toxicity detection)*
 
 ## 8. Platform, Reliability and Performance Checklist
 
 - [ ] **D2** — Idempotent CLI corpus pipeline with index build time, corpus versions, chunk count and throughput metrics.
-- [ ] **D3–D4** — At least four Compose services, declared dependencies/health checks, documented deployment boundaries, and runtime-injected configuration via `.env.example`. Never commit real credentials.
-- [ ] **D5** — Structured logs, cross-service correlation ID, OpenTelemetry traces, Prometheus metrics and Grafana dashboard; reconstruct a full run from its ID.
+- [x] **D3–D4** — At least four Compose services, declared dependencies/health checks, documented deployment boundaries, and runtime-injected configuration via `.env.example`. Never commit real credentials.
+- [x] **D5** — Structured logs, cross-service correlation ID, OpenTelemetry traces, Prometheus metrics and Grafana dashboard; reconstruct a full run from its ID.
 - [ ] **D6** — Declare p95 complete-run SLO before tests; run Locust against a realistic-delay stub; report RPS, p50/p95, SLO result, failure concurrency and bottleneck.
 - [ ] **D7** — Justified caching and per-client rate limiting; measure p95 and cost effects.
-- [ ] **D8** — Runbook for two likely failure modes and at least one genuine development incident-log entry.
+- [x] **D8** — Runbook for two likely failure modes and at least one genuine development incident-log entry. *(docs/runbook.md: 4 rehearsed failure modes; docs/incident-log.md: INC-001)*
 
 ## 9. API Contract (Initial Proposal)
 
@@ -172,82 +179,168 @@ The response should indicate a lifecycle status such as `queued`, `running`, `co
 
 ## 10. Local Setup and Execution
 
-These are the planned clean-clone steps. They become final run instructions once the service names, ports and environment variables are fixed in the implementation.
+### Prerequisites
+
+* Docker Desktop (Windows/macOS) or Docker Engine + Compose v2 (Linux), with about 4 GB of RAM for Docker.
+* Git.
+* Optional, for the test scripts: Python 3.11+.
+* Free host ports 8080, 8000, 8001, 3000, 9090 and 16686. Any of them can be changed in `.env`.
+
+### 1. Clone and configure
 
 ```bash
-git clone <repository-url>
-cd <repository-folder>
+git clone https://github.com/VijaySuriyaP/export-classification-service-mlops.git
+cd export-classification-service-mlops
 ```
 
-Create a local environment file from the template. On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-On macOS/Linux:
+macOS/Linux:
 
 ```bash
 cp .env.example .env
 ```
 
-Fill only the required local values in `.env`; never commit it. Then build and start the stack:
+The defaults work as they are: the model provider is the bundled LLM stub, so no API key is needed. For a real
+provider, set `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` in `.env`. **Never commit `.env`**; it is git-ignored.
+
+### 2. Build and start
 
 ```bash
-docker compose up --build
+docker compose up -d --build --wait
 ```
 
-Useful checks:
+`--wait` returns once every health check passes. The first build takes a few minutes. Then:
 
 ```bash
-docker compose ps
-docker compose logs -f
+docker compose ps        # every service "Up", the ones with health checks "(healthy)"
 ```
 
-Once the API health route and port are finalised, record the exact health-check URL and one example `curl` request here. The README must be verified by a teammate following it from a clean clone without verbal help.
+### 3. Use it
+
+| What | URL |
+|---|---|
+| **Web client** (submit, watch the run, see the result, give feedback) | <http://localhost:8080> |
+| API (interactive OpenAPI docs) | <http://localhost:8000/docs> |
+| API health / readiness | <http://localhost:8000/health> · <http://localhost:8000/ready> |
+| Grafana dashboard "Export Classification – Overview" (anonymous view; admin login from `.env`) | <http://localhost:3000> |
+| Jaeger traces | <http://localhost:16686> |
+| Prometheus | <http://localhost:9090> |
+
+From the command line (the same flow the web client uses):
+
+```bash
+# submit -> 202 {"run_id": "...", "status": "queued", "status_url": "/runs/<id>", ...}
+curl -s -X POST localhost:8000/runs -H 'Content-Type: application/json' \
+     -d '{"product_description": "Stainless steel vacuum flask with a moulded plastic outer body."}'
+
+# poll until status is completed | escalated | failed
+curl -s localhost:8000/runs/<run_id>
+
+# full reconstruction: every step, tool call, passage and model call
+curl -s localhost:8000/runs/<run_id>/events
+
+# feedback on a finished run, and the aggregate
+curl -s -X POST localhost:8000/runs/<run_id>/feedback -H 'Content-Type: application/json' -d '{"rating": "up"}'
+curl -s localhost:8000/feedback/summary
+```
+
+On Windows PowerShell, use `curl.exe` (not the `curl` alias) and put the JSON in single quotes, with inner double
+quotes escaped as `\"`, or use `Invoke-RestMethod`:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/runs -ContentType 'application/json' `
+  -Body '{"product_description": "Stainless steel vacuum flask with a moulded plastic outer body."}'
+```
+
+### 4. Verify the stack
+
+```bash
+python scripts/smoke_test.py          # standard library only; expect "9/9 checks passed"
+```
+
+The `breaker` check was verified with the short timers CI uses. Put these in `.env` before `docker compose up`:
+`STUB_LATENCY_MS=150`, `STUB_LATENCY_JITTER_MS=50`, `LLM_MAX_ATTEMPTS=2`, `LLM_BACKOFF_BASE_S=0.2`,
+`LLM_BACKOFF_MAX_S=1`, `CB_FAILURE_THRESHOLD=3`, `CB_RESET_TIMEOUT_S=5`. With the slower `.env.example` defaults,
+skip that check: `python scripts/smoke_test.py --skip breaker`.
+
+Unit and integration tests, no Docker needed:
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate        # Windows; macOS/Linux: source .venv/bin/activate
+pip install -r requirements/dev.txt
+python -m pytest
+```
+
+### 5. Scale, stop, reset
+
+```bash
+docker compose up -d --scale agent-worker=3 --no-recreate   # A7
+docker compose logs -f api agent-worker                      # JSON logs with correlation_id / run_id / trace_id
+docker compose down                                          # stop (keeps runs, quarantine, feedback)
+docker compose down -v                                       # stop and DELETE all data volumes
+```
+
+Something wrong? Start at [Runbook §0 Triage](docs/runbook.md#0-first-five-minutes-triage).
+
+> **Teammate check (required by this README):** a teammate must follow this section from a clean clone without
+> verbal help and record the result here. *Not done yet. Name, date, OS, outcome:* ______
 
 ## 11. Testing and Demonstration Plan
 
 For every test, record **test ID, precondition/input, steps, expected result, actual result, pass/fail, and evidence path**.
+This is done in [`docs/test-matrix.md`](docs/test-matrix.md). The evidence (command output and screenshots of the
+real running system) is in [`docs/evidence/`](docs/evidence/README.md), and the commands, owners and current
+readiness of each demo item are in [`docs/demo-checklist.md`](docs/demo-checklist.md). Ticked items below are
+demonstrable today.
 
 The final demonstration checklist follows the project brief:
 
-1. [ ] Start a working system using `docker compose up` from a clean clone.
-2. [ ] Submit a valid request and show a routed recommendation with citations that resolve to retrieved text.
-3. [ ] Trace one complete run, including tool calls, queries, passages, prompt version, per-step latency and cost.
-4. [ ] Submit a malformed request and show quarantine plus proof no agent run started.
-5. [ ] Submit an unanswerable/out-of-scope case and show escalation rather than fabrication.
-6. [ ] Show self-verification catching an unsupported answer, followed by another search or escalation.
-7. [ ] Show a prompt-injection attempt and the guardrail response.
-8. [ ] Simulate provider unavailability and show the circuit breaker and fallback path.
+1. [x] Start a working system using `docker compose up` from a clean clone. *(CI `stack` job; `docs/evidence/compose-ps-1-worker.txt`)*
+2. [ ] Submit a valid request and show a routed recommendation with citations that resolve to retrieved text. *(path works; needs agents)*
+3. [ ] Trace one complete run, including tool calls, queries, passages, prompt version, per-step latency and cost. *(works with the stub; needs real tools)*
+4. [x] Submit a malformed request and show quarantine plus proof no agent run started.
+5. [ ] Submit an unanswerable/out-of-scope case and show escalation rather than fabrication. *(needs agents)*
+6. [ ] Show self-verification catching an unsupported answer, followed by another search or escalation. *(needs agents)*
+7. [x] Show a prompt-injection attempt and the guardrail response.
+8. [x] Simulate provider unavailability and show the circuit breaker and fallback path. *(fallback = safe escalation; no second provider configured)*
 9. [ ] Show Locust results against the predeclared p95 target, failure concurrency, bottleneck and worker-scaling effect.
 10. [ ] Demonstrate the stainless-steel vacuum-flask case with the rule, heading and notes cited.
 
 Save screenshots of the actual running application, test output, dashboard, trace and load-test report. Do not use mock screenshots as evidence of a real run.
 
-## 12. Repository Layout (Suggested)
+## 12. Repository Layout
 
 ```text
 .
 ├── app/
-│   ├── api/                 # FastAPI routes and request/response contracts
-│   ├── agents/              # Classification and verification agents
-│   ├── tools/               # Corpus search, clause lookup, request-field lookup
-│   ├── retrieval/           # Parsing, chunking, embeddings and index operations
-│   ├── evaluation/          # Fixed scenarios and batch evaluation runner
-│   └── observability/       # Logging, tracing and metrics helpers
-├── corpus/                  # Source inventory and permitted source documents/notes
-├── tests/                   # Unit, integration, API and safety tests
-├── scripts/                 # Ingest, evaluate, smoke-test and load-test commands
-├── dashboards/              # Grafana dashboard/configuration
-├── docs/                    # Architecture, decisions, runbook and incident log
+│   ├── api/                 # FastAPI routes: runs, events, feedback, quarantine, ops
+│   ├── contracts/           # Pydantic data contracts (request, result, run, feedback)
+│   ├── agents/              # AgentRunner seam + stub runner (real agents land here)
+│   ├── worker/              # Queue consumer, run recorder (limits, events, spans)
+│   ├── llm/ , llm_stub/     # Resilient model client; OpenAI-compatible stub
+│   ├── guardrails/          # Prompt-injection screen, output policy
+│   └── common/              # Config, Redis stores, metrics, logging, tracing, resilience
+├── web/                     # Browser client (static HTML/JS/CSS) + nginx config with /api/ proxy
+├── docker/                  # One Dockerfile per service (api, worker, llm-stub, web)
+├── observability/           # Prometheus config, Grafana provisioning + dashboard
+├── loadtest/                # Locust file and machine-readable SLO
+├── scripts/                 # smoke_test, capture_screenshots, run_loadtest, loadtest_report, build_dashboard
+├── tests/platform/          # Unit, integration, config-consistency tests
+├── docs/                    # Contract, platform, SLO, load test, runbook, incident log, test matrix, demo, evidence/
+├── .github/workflows/ci.yml # pytest + full Compose stack smoke test
 ├── .env.example
 ├── compose.yaml
-├── README.md
-└── requirements.txt or pyproject.toml
+└── requirements/ , pyproject.toml
 ```
 
-Adapt this layout if needed, but keep ingestion, agents, API, evaluations, tests and deployment configuration easy to find.
+Still to come from the agent and retrieval workstreams: `app/tools/`, `app/retrieval/`, `app/evaluation/` and
+`corpus/`.
 
 ## 13. Final Deliverables
 

@@ -1,0 +1,32 @@
+# Drill C: model provider down -> retries -> breaker opens -> escalation -> recovery  2026-11-11T05:00:32Z
+(.env for this drill: LLM_MAX_ATTEMPTS=2 CB_FAILURE_THRESHOLD=3 CB_RESET_TIMEOUT_S=5)
+
+$ curl -X POST localhost:8001/admin/mode -d '{"mode":"down"}'
+{"mode":"down","error_rate":0.0}
+--- run 1: c88d18cfa8a240f29f686b5f0a13d93e
+status=escalated route=specialist-classification-review hs_code=None reason='Model provider unavailable (retries exhausted / circuit open); no classification attempted. Resubmit later or refer to a specialist.'
+  llm_call outcome=provider_unavailable error=primary attempt 1: http 503; primary attempt 2: http 503 breakers={'primary': 'closed'}
+--- run 2: b40d1fc5bedf407f949ba48fffe4e14b
+status=escalated route=specialist-classification-review hs_code=None reason='Model provider unavailable (retries exhausted / circuit open); no classification attempted. Resubmit later or refer to a specialist.'
+  llm_call outcome=provider_unavailable error=primary attempt 1: http 503 breakers={'primary': 'open'}
+--- run 3: 0d20874ad67048518ab309185002cb26
+status=escalated route=specialist-classification-review hs_code=None reason='Model provider unavailable (retries exhausted / circuit open); no classification attempted. Resubmit later or refer to a specialist.'
+  llm_call outcome=provider_unavailable error=primary: circuit open breakers={'primary': 'open'}
+--- run 4: fc2bf18a7ced4d0c8b506c68810dffa3
+status=escalated route=specialist-classification-review hs_code=None reason='Model provider unavailable (retries exhausted / circuit open); no classification attempted. Resubmit later or refer to a specialist.'
+  llm_call outcome=provider_unavailable error=primary attempt 1: http 503 breakers={'primary': 'open'}
+
+$ docker compose logs agent-worker | grep 'circuit breaker transition'
+2026-11-11T05:00:36.257277+00:00 circuit breaker transition primary closed -> open
+2026-11-11T05:00:43.782743+00:00 circuit breaker transition primary open -> half_open
+2026-11-11T05:00:43.787059+00:00 circuit breaker transition primary half_open -> open
+
+$ curl -s 'localhost:9090/api/v1/query?query=max(ecs_circuit_breaker_state)'
+[1794373258.411, '2'] (2 = open)
+
+$ curl -X POST localhost:8001/admin/mode -d '{"mode":"ok"}'
+{"mode":"ok","error_rate":0.0}
+--- run after recovery: d0112d5249034a7dba0d5ee7998e0f6e
+  llm_call outcome=success provider=primary attempts=1
+2026-11-11T05:01:04.811413+00:00 circuit breaker transition primary open -> half_open
+2026-11-11T05:01:04.973952+00:00 circuit breaker transition primary half_open -> closed

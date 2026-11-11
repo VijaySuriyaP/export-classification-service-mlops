@@ -1,0 +1,7 @@
+# INC-001 fix verified  2026-11-11T04:59:04Z
+$ curl localhost:8000/ready   (3 workers up)
+{"status":"ready","redis":"ok","queue_depth":0,"workers_alive":3}
+$ docker compose stop agent-worker
+ Container export-classification-agent-worker-1 Stopped 
+$ curl localhost:8000/ready   (after WORKER_HEARTBEAT_TTL_S=30 s)
+{"status":"ready","redis":"ok","queue_depth":0,"workers_alive":0}

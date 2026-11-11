@@ -74,7 +74,7 @@ jobs:
           docker compose ps | tee evidence/compose-ps-3-workers.txt
 
       - name: Smoke test - 3 workers (run, breaker, scale)
-        run: python scripts/smoke_test.py --only run,breaker,scale --expect-workers 3 --label 3-workers | tee evidence/smoke-3-workers.txt
+        run: python scripts/smoke_test.py --only run,web,feedback,breaker,scale --expect-workers 3 --label 3-workers | tee evidence/smoke-3-workers.txt
 
       - name: Resource snapshot
         if: always()

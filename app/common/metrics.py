@@ -21,6 +21,7 @@ REQUESTS_REJECTED = Counter("ecs_requests_rejected_total", "Requests rejected at
 RATE_LIMITED = Counter("ecs_rate_limited_total", "Requests refused by the per-client rate limiter")
 QUEUE_DEPTH = Gauge("ecs_queue_depth", "Runs waiting in the queue")
 REDIS_ERRORS = Counter("ecs_redis_errors_total", "Redis operations that failed", ["component"])
+FEEDBACK = Counter("ecs_feedback_total", "Reviewer feedback on finished runs (L6)", ["rating", "prompt_version"])
 
 # ---------------- Worker: runs ----------------
 RUNS_FINISHED = Counter("ecs_runs_finished_total", "Runs that reached a terminal state", ["status", "route"])

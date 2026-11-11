@@ -1,0 +1,33 @@
+# Drill A: Redis outage  2026-11-11T04:57:02Z
+$ docker compose stop redis
+ Container export-classification-redis-1 Stopping 
+ Container export-classification-redis-1 Stopped 
+
+$ curl -i localhost:8000/health
+HTTP/1.1 200 OK
+{"status":"ok","version":"0.1.0"}
+$ curl -i localhost:8000/ready
+HTTP/1.1 503 Service Unavailable
+{"status":"not_ready","redis":"Error -5 connecting to redis:6379. No address associated with hostname."}
+$ curl -i -X POST localhost:8000/runs ...
+HTTP/1.1 503 Service Unavailable
+retry-after: 5
+{"error":"service_unavailable","retry_after_s":5,"detail":"queue backend unavailable; no run was created or changed"}
+
+$ curl -i localhost:8080/api/ready   (through the web proxy)
+HTTP/1.1 503 Service Unavailable
+
+$ docker compose logs --since 30s agent-worker | grep -i redis | tail -2
+{"ts": "2026-11-11T04:57:08.140205+00:00", "level": "ERROR", "service": "agent-worker", "logger": "worker", "msg": "redis unavailable; backing off", "correlation_id": null, "run_id": null, "error": "ConnectionError", "retry_in_s": 1.0}
+{"ts": "2026-11-11T04:57:13.142872+00:00", "level": "ERROR", "service": "agent-worker", "logger": "worker", "msg": "redis unavailable; backing off", "correlation_id": null, "run_id": null, "error": "ConnectionError", "retry_in_s": 2.0}
+
+$ docker compose start redis
+ Container export-classification-redis-1 Starting 
+ Container export-classification-redis-1 Started 
+$ curl localhost:8000/ready
+{"status":"ready","redis":"ok","queue_depth":0}
+$ python scripts/smoke_test.py --only ready,run
+PASS  ready          /health and /ready ok, queue_depth=0  (0.0s)
+PASS  run            run bdd2880d escalated route=specialist-classification-review e2e=0.194s events=10 trace_id=3e9c13b9277ee0576be46e2b6f526eaa  (0.4s)
+
+2/2 checks passed
