@@ -10,6 +10,15 @@ def test_health_and_ready(client):
     assert client.get("/ready").json()["status"] == "ready"
 
 
+def test_ready_reports_live_workers_without_changing_status(client, store):
+    """INC-001: with no workers the API stays ready (it can still queue), but says so."""
+    body = client.get("/ready").json()
+    assert body["status"] == "ready" and body["workers_alive"] == 0
+    store.heartbeat("w1", 30)
+    store.heartbeat("w2", 30)
+    assert client.get("/ready").json()["workers_alive"] == 2
+
+
 def test_submit_valid_run_enqueues_and_is_pollable(client, redis_client):
     resp = client.post("/runs", json={"product_description": VACUUM_FLASK},
                        headers={"X-Correlation-ID": "demo-correlation-0001"})

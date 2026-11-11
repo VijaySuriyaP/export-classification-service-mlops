@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Export Classification Check</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>Export Classification Check</h1>
+    <p class="sub">Proposed HS classification and export-policy finding for Chapters 73 and 96</p>
+  </div>
+  <div class="topbar-right">
+    <span id="api-status" class="pill pill-muted" title="GET /ready">API: checking…</span>
+    <nav class="ops-links">
+      <a id="link-docs" href="/api/docs" target="_blank" rel="noopener">API docs</a>
+      <a id="link-grafana" target="_blank" rel="noopener">Grafana</a>
+      <a id="link-jaeger" target="_blank" rel="noopener">Jaeger</a>
+    </nav>
+  </div>
+</header>
+
+<div class="banner" role="note">
+  Decision support only. This service never files a declaration; a licensed customs broker makes the final
+  classification decision.
+</div>
+
+<main class="layout">
+  <!-- ------------------------------------------------------------ submit -->
+  <section class="card" aria-labelledby="submit-h">
+    <h2 id="submit-h">1. Describe the product</h2>
+    <form id="run-form" novalidate>
+      <label for="product_description">Product description <span class="req">*</span></label>
+      <textarea id="product_description" name="product_description" rows="4" maxlength="2000"
+                placeholder="e.g. Stainless steel vacuum flask with a moulded plastic outer body."></textarea>
+      <div class="row-between">
+        <small class="hint"><span id="desc-count">0</span> / 2000 characters (minimum 10)</small>
+        <button type="button" class="link-btn" id="demo-btn">Use the vacuum-flask demo case</button>
+      </div>
+      <div class="field-error" data-for="product_description"></div>
+
+      <details id="advanced">
+        <summary>Optional details</summary>
+        <div class="grid2">
+          <div>
+            <label for="materials">Materials (comma-separated)</label>
+            <input id="materials" name="materials" placeholder="stainless steel, plastic">
+            <div class="field-error" data-for="materials"></div>
+          </div>
+          <div>
+            <label for="chapter_hint">Chapter hint</label>
+            <select id="chapter_hint" name="chapter_hint">
+              <option value="">(none)</option><option value="73">73</option><option value="96">96</option>
+            </select>
+            <div class="field-error" data-for="chapter_hint"></div>
+          </div>
+          <div>
+            <label for="hs_code_hint">HS code hint</label>
+            <input id="hs_code_hint" name="hs_code_hint" placeholder="4, 6 or 8 digits" inputmode="numeric">
+            <div class="field-error" data-for="hs_code_hint"></div>
+          </div>
+          <div>
+            <label for="destination_country">Destination (ISO alpha-2)</label>
+            <input id="destination_country" name="destination_country" placeholder="AE" maxlength="2">
+            <div class="field-error" data-for="destination_country"></div>
+          </div>
+          <div>
+            <label for="quantity">Quantity</label>
+            <input id="quantity" name="quantity" type="number" min="1" max="1000000">
+            <div class="field-error" data-for="quantity"></div>
+          </div>
+          <div>
+            <label for="quantity_unit">Unit</label>
+            <select id="quantity_unit" name="quantity_unit">
+              <option value="">(none)</option><option>pcs</option><option>kg</option><option>set</option>
+              <option>pair</option><option>dozen</option>
+            </select>
+            <div class="field-error" data-for="quantity_unit"></div>
+          </div>
+          <div class="span2">
+            <label for="client_reference">Your reference (echoed back, never sent to a model)</label>
+            <input id="client_reference" name="client_reference" placeholder="PO-2026-0042" maxlength="64">
+            <div class="field-error" data-for="client_reference"></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="field-error" data-for="_other"></div>
+      <div class="actions">
+        <button type="submit" id="submit-btn" class="primary">Submit for classification</button>
+        <button type="button" id="reset-btn">Clear</button>
+      </div>
+    </form>
+    <div id="submit-msg" class="msg" hidden></div>
+
+    <h3>Recent runs (this browser)</h3>
+    <ul id="history" class="history"><li class="muted">None yet.</li></ul>
+    <form id="open-form" class="inline-form">
+      <input id="open-run-id" placeholder="Open a run by ID (32 hex characters)" pattern="[0-9a-f]{32}">
+      <button type="submit">Open</button>
+    </form>
+  </section>
+
+  <!-- ------------------------------------------------------------ run / result -->
+  <section class="card" aria-labelledby="run-h">
+    <h2 id="run-h">2. Run status and result</h2>
+    <div id="run-empty" class="muted">Submit a product or open a run to see its status here.</div>
+    <div id="run-view" hidden>
+      <ol class="timeline" id="timeline">
+        <li data-step="queued">Queued</li>
+        <li data-step="running">Running</li>
+        <li data-step="done">Finished</li>
+      </ol>
+      <dl class="meta">
+        <dt>Run ID</dt><dd><code id="m-run"></code></dd>
+        <dt>Status</dt><dd><span id="m-status" class="pill"></span> <span id="m-elapsed" class="muted"></span></dd>
+        <dt>Correlation ID</dt><dd><code id="m-cid"></code></dd>
+        <dt>Trace</dt><dd id="m-trace"></dd>
+        <dt>Reference</dt><dd id="m-ref"></dd>
+      </dl>
+      <div id="result"></div>
+      <details id="events-box">
+        <summary>Run reconstruction: event log (<span id="ev-count">0</span> events)</summary>
+        <div class="table-wrap"><table class="events">
+          <thead><tr><th>#</th><th>Kind</th><th>Agent / tool</th><th>Detail</th><th>Latency</th></tr></thead>
+          <tbody id="events"></tbody>
+        </table></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ feedback -->
+  <section class="card" aria-labelledby="fb-h">
+    <h2 id="fb-h">3. Feedback on this result</h2>
+    <p class="muted" id="fb-disabled">Feedback opens once the run has finished.</p>
+    <form id="fb-form" hidden>
+      <div class="thumbs" role="radiogroup" aria-label="Rating">
+        <label><input type="radio" name="rating" value="up"> 👍 Helpful / correct</label>
+        <label><input type="radio" name="rating" value="down"> 👎 Wrong or unhelpful</label>
+      </div>
+      <div class="field-error" data-fb-for="rating"></div>
+      <fieldset class="reasons">
+        <legend>What was wrong? (optional)</legend>
+        <label><input type="checkbox" name="reasons" value="wrong_hs_code"> Wrong HS code</label>
+        <label><input type="checkbox" name="reasons" value="wrong_route"> Wrong route / escalation</label>
+        <label><input type="checkbox" name="reasons" value="citation_problem"> Citation doesn't support it</label>
+        <label><input type="checkbox" name="reasons" value="missing_notes"> Ignored a section/chapter note</label>
+        <label><input type="checkbox" name="reasons" value="unclear_explanation"> Unclear explanation</label>
+        <label><input type="checkbox" name="reasons" value="too_slow"> Too slow</label>
+        <label><input type="checkbox" name="reasons" value="other"> Other</label>
+      </fieldset>
+      <div class="grid2">
+        <div>
+          <label for="fb-code">Code you'd expect (optional)</label>
+          <input id="fb-code" name="suggested_hs_code" placeholder="e.g. 96170012" inputmode="numeric">
+          <div class="field-error" data-fb-for="suggested_hs_code"></div>
+        </div>
+        <div>
+          <label for="fb-reviewer">Your name (optional)</label>
+          <input id="fb-reviewer" name="reviewer" maxlength="64">
+          <div class="field-error" data-fb-for="reviewer"></div>
+        </div>
+      </div>
+      <label for="fb-comment">Comment (optional, never sent to a model)</label>
+      <textarea id="fb-comment" name="comment" rows="2" maxlength="1000"></textarea>
+      <div class="field-error" data-fb-for="comment"></div>
+      <div class="actions"><button type="submit" class="primary">Send feedback</button></div>
+    </form>
+    <div id="fb-msg" class="msg" hidden></div>
+
+    <h3>Quality over time <button type="button" class="link-btn" id="fb-refresh">refresh</button></h3>
+    <div id="fb-summary" class="muted">Loading…</div>
+  </section>
+</main>
+
+<footer class="foot">
+  Mini Project 07 · UE24AM342AA5 · Talks to the API through <code>/api/</code> on this origin.
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

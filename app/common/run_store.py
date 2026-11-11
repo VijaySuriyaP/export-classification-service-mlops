@@ -105,6 +105,10 @@ class RunStore:
                 moved += self.requeue_processing(worker_id)
         return moved
 
+    def workers_alive(self) -> int:
+        """Workers whose heartbeat has not expired (informational; see docs/incident-log.md INC-001)."""
+        return sum(1 for _ in self.r.scan_iter(match=f"{PREFIX}:worker:*:alive", count=100))
+
     def queue_depth(self) -> int:
         return int(self.r.llen(QUEUE_KEY))
 
@@ -143,6 +147,65 @@ class QuarantineStore:
 
     def count(self) -> int:
         return int(self.r.llen(QUARANTINE_KEY))
+
+
+FEEDBACK_KEY = f"{PREFIX}:feedback"
+
+
+class FeedbackStore:
+    """Reviewer feedback on finished runs (L6).
+
+    One entry per (run, client): a hash field ``<run_id>:<client_id>``, so re-rating a run replaces
+    the earlier verdict instead of counting twice. Feedback is the long-term quality record, so it
+    does not expire with the run (runs expire after ``RUN_TTL_SECONDS``).
+    """
+
+    def __init__(self, client: redis.Redis) -> None:
+        self.r = client
+
+    def put(self, entry: dict[str, Any]) -> bool:
+        """Store ``entry``; return True if it replaced this client's earlier feedback for the run."""
+        field = f"{entry['run_id']}:{entry['client_id']}"
+        created = self.r.hset(FEEDBACK_KEY, field, json.dumps(entry, default=str))
+        return not bool(created)
+
+    def all(self) -> list[dict[str, Any]]:
+        return [json.loads(v) for v in self.r.hvals(FEEDBACK_KEY)]
+
+    def for_run(self, run_id: str) -> list[dict[str, Any]]:
+        out = []
+        for _field, value in self.r.hscan_iter(FEEDBACK_KEY, match=f"{run_id}:*"):
+            out.append(json.loads(value))
+        return sorted(out, key=lambda e: e["received_at"])
+
+
+def summarise_feedback(entries: list[dict[str, Any]], recent: int = 10) -> dict[str, Any]:
+    """Aggregate feedback entries into totals by prompt version, route and UTC day."""
+
+    def bucket() -> dict[str, Any]:
+        return {"total": 0, "up": 0, "down": 0, "satisfaction": None}
+
+    def add(b: dict[str, Any], rating: str) -> None:
+        b["total"] += 1
+        b[rating] += 1
+        b["satisfaction"] = round(b["up"] / b["total"], 4)
+
+    total = bucket()
+    by_prompt: dict[str, dict] = {}
+    by_route: dict[str, dict] = {}
+    by_day: dict[str, dict] = {}
+    reasons: dict[str, int] = {}
+    for e in entries:
+        rating = e["rating"]
+        add(total, rating)
+        add(by_prompt.setdefault(e.get("prompt_version") or "unknown", bucket()), rating)
+        add(by_route.setdefault(e.get("route") or "none", bucket()), rating)
+        add(by_day.setdefault(str(e["received_at"])[:10], bucket()), rating)
+        for reason in e.get("reasons") or []:
+            reasons[reason] = reasons.get(reason, 0) + 1
+    newest = sorted(entries, key=lambda e: str(e["received_at"]), reverse=True)[:recent]
+    return {"total": total, "by_prompt_version": by_prompt, "by_route": by_route,
+            "by_day": dict(sorted(by_day.items())), "reasons": reasons, "recent": newest}
 
 
 class RateLimiter:

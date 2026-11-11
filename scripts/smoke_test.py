@@ -6,7 +6,7 @@
     python scripts/smoke_test.py --only ready,run         # a subset
     python scripts/smoke_test.py --skip observability     # without Prometheus/Grafana/Jaeger
 
-Checks: ready, run, malformed, injection, ratelimit, breaker, scale, observability.
+Checks: ready, run, web, feedback, malformed, injection, ratelimit, breaker, scale, observability.
 Exit code 0 = all selected checks passed. Each check prints PASS/FAIL with the evidence it used, so
 the output can be pasted into the test matrix.
 
@@ -104,7 +104,9 @@ class Smoke:
         assert status == 200 and ready["status"] == "ready", f"/ready -> {status} {ready}"
         status, _, _ = call("GET", f"{self.a.api}/health")
         assert status == 200, f"/health -> {status}"
-        return f"/health and /ready ok, queue_depth={ready['queue_depth']}"
+        workers = retry(lambda: call("GET", f"{self.a.api}/ready")[1].get("workers_alive"), 30, every=1)
+        assert workers, "/ready reports no live agent-worker: queued runs would never progress (INC-001)"
+        return f"/health and /ready ok, queue_depth={ready['queue_depth']}, workers_alive={workers}"
 
     def check_run(self) -> str:
         cid = f"smoke-{uuid.uuid4().hex[:12]}"
@@ -123,6 +125,46 @@ class Smoke:
         assert run["usage"]["llm_calls"] >= 1 and run["usage"]["tool_calls"] >= 1
         return (f"run {sub['run_id'][:8]} {run['status']} route={run['result']['route']} "
                 f"e2e={run['usage']['end_to_end_seconds']}s events={len(kinds)} trace_id={run['trace_id']}")
+
+    def check_web(self) -> str:
+        """A8: the browser client is served, and its same-origin /api/ proxy reaches the API."""
+        status, page, hdrs = call("GET", f"{self.a.web}/")
+        assert status == 200 and "Export Classification Check" in page, f"web / -> {status}"
+        assert "app.js" in page and "content-security-policy" in hdrs, "page lacks its script or CSP header"
+        for asset in ("app.js", "styles.css"):
+            assert call("GET", f"{self.a.web}/{asset}")[0] == 200, f"{asset} not served"
+        status, ready, _ = call("GET", f"{self.a.web}/api/ready")
+        assert status == 200 and ready["status"] == "ready", f"proxy /api/ready -> {status} {ready}"
+        # a full submit -> poll round trip through the proxy, exactly as the browser does it
+        status, sub, _ = call("POST", f"{self.a.web}/api/runs", {"product_description": FLASK},
+                              {"X-Client-ID": f"smoke-web-{uuid.uuid4().hex[:6]}"})
+        assert status == 202, f"submit via proxy -> {status} {sub}"
+        status, run, _ = call("GET", f"{self.a.web}/api/runs/{sub['run_id']}")
+        assert status == 200 and run["run_id"] == sub["run_id"]
+        return f"page + assets served with CSP; /api/ proxy ok (ready, submit 202, poll {run['status']})"
+
+    def check_feedback(self) -> str:
+        """L6: feedback only on finished runs, stamped with the prompt version, aggregated in the summary."""
+        status, sub, _ = self.submit()
+        assert status == 202, f"submit -> {status}"
+        early = call("POST", f"{self.a.api}/runs/{sub['run_id']}/feedback", {"rating": "up"})
+        run = self.wait_run(sub["run_id"])
+        if early[0] != 201:   # the run may already have finished on a fast stack; otherwise it must be 409
+            assert early[0] == 409, f"feedback on unfinished run -> {early[0]}"
+        before = call("GET", f"{self.a.api}/feedback/summary")[1]["total"]["total"]
+        reviewer = f"smoke-fb-{uuid.uuid4().hex[:6]}"
+        status, ack, _ = call("POST", f"{self.a.api}/runs/{sub['run_id']}/feedback",
+                              {"rating": "down", "reasons": ["wrong_route"], "comment": "smoke test"},
+                              {"X-Client-ID": reviewer})
+        assert status == 201, f"feedback -> {status} {ack}"
+        bad = call("POST", f"{self.a.api}/runs/{sub['run_id']}/feedback", {"rating": "meh"})
+        assert bad[0] == 422 and bad[1]["errors"][0]["field"] == "rating", f"invalid feedback -> {bad[0]}"
+        summary = call("GET", f"{self.a.api}/feedback/summary")[1]
+        assert summary["total"]["total"] >= before + 1, "summary did not count the new feedback"
+        version = run["result"]["prompt_version"]
+        assert version in summary["by_prompt_version"], f"prompt version {version} missing from summary"
+        return (f"409 before finish={early[0] == 409}; 201 after ({ack['feedback_id'][:8]}); 422 on bad rating; "
+                f"summary total={summary['total']['total']}, by prompt version: {sorted(summary['by_prompt_version'])}")
 
     def check_malformed(self) -> str:
         before = self.counter("ecs_runs_submitted_total")
@@ -228,7 +270,8 @@ class Smoke:
     # ------------------------------------------------------------ driver
     def run(self) -> int:
         checks = {
-            "ready": self.check_ready, "run": self.check_run, "malformed": self.check_malformed,
+            "ready": self.check_ready, "run": self.check_run, "web": self.check_web, "feedback": self.check_feedback,
+            "malformed": self.check_malformed,
             "injection": self.check_injection, "ratelimit": self.check_ratelimit, "breaker": self.check_breaker,
             "scale": self.check_scale, "observability": self.check_observability,
         }
@@ -264,6 +307,7 @@ class Smoke:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--api", default="http://localhost:8000")
+    p.add_argument("--web", default="http://localhost:8080")
     p.add_argument("--stub", default="http://localhost:8001")
     p.add_argument("--prometheus", default="http://localhost:9090")
     p.add_argument("--grafana", default="http://localhost:3000")

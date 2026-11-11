@@ -105,7 +105,7 @@ def test_compose_has_required_services_and_dependencies():
     compose = _load("compose.yaml")
     services = compose["services"]
     assert len([s for s, c in services.items() if "profiles" not in c]) >= 4          # D3
-    for name in ("api", "agent-worker", "redis", "llm-stub", "prometheus", "grafana", "jaeger"):
+    for name in ("api", "agent-worker", "redis", "llm-stub", "prometheus", "grafana", "jaeger", "web"):
         assert name in services, name
     assert services["api"]["depends_on"]["redis"]["condition"] == "service_healthy"
     assert services["agent-worker"]["depends_on"]["redis"]["condition"] == "service_healthy"
@@ -130,16 +130,47 @@ def test_images_are_pinned_and_secrets_come_from_env_file():
     assert not re.search(r"(?i)(api_key|password|secret|token)\s*:\s*[^\s\"$]", text.replace("GF_AUTH", ""))
 
 
-@pytest.mark.parametrize("dockerfile", ["api", "worker", "llm-stub"])
+@pytest.mark.parametrize("dockerfile", ["api", "worker", "llm-stub", "web"])
 def test_dockerfiles_define_healthcheck_and_run_unprivileged(dockerfile):
     text = (ROOT / f"docker/{dockerfile}.Dockerfile").read_text(encoding="utf-8")
     assert "HEALTHCHECK" in text and re.search(r"^USER\s+\S+", text, re.M)
 
 
 def test_dockerfile_copies_match_repo_layout():
-    for dockerfile in ("api", "worker", "llm-stub"):
-        for src in re.findall(r"^COPY\s+(\S+)\s", (ROOT / f"docker/{dockerfile}.Dockerfile").read_text(encoding="utf-8"), re.M):
-            assert (ROOT / src.rstrip("/")).exists(), f"{dockerfile}: COPY source {src} missing"
+    for dockerfile in ("api", "worker", "llm-stub", "web"):
+        for line in re.findall(r"^COPY\s+(.+)$", (ROOT / f"docker/{dockerfile}.Dockerfile").read_text(encoding="utf-8"), re.M):
+            for src in line.split()[:-1]:                       # every source, not just the first
+                assert (ROOT / src.rstrip("/")).exists(), f"{dockerfile}: COPY source {src} missing"
+
+
+# ---------------------------------------------------------------- web client
+def test_web_client_is_wired_to_the_api():
+    """A8: the web service depends on a healthy api, and nginx proxies /api/ to the api service port."""
+    compose = _load("compose.yaml")
+    web = compose["services"]["web"]
+    assert web["depends_on"]["api"]["condition"] == "service_healthy"
+    assert any(str(p).endswith(":8080") for p in web["ports"])
+    nginx = (ROOT / "web/nginx.conf").read_text(encoding="utf-8")
+    assert "location /api/" in nginx and "http://api:8000" in nginx and "location = /healthz" in nginx
+
+
+def test_web_client_only_calls_existing_api_routes():
+    """Every path the browser client calls must exist in the API, so a renamed route breaks CI, not the demo."""
+    from app.api.main import create_app
+    import fakeredis
+
+    routes = {getattr(r, "path", "") for r in create_app(Settings(redis_url="redis://x"), fakeredis.FakeRedis()).routes}
+    js = (ROOT / "web/app.js").read_text(encoding="utf-8")
+    called = set(re.findall(r'api\("(?:GET|POST)",\s*[`"]([^`"?]+)', js))
+    assert called, "found no api() calls in web/app.js"
+    normalised = {re.sub(r"\$\{[^}]+\}", "{run_id}", c) for c in called}
+    missing = normalised - routes
+    assert not missing, f"web client calls routes the API does not have: {sorted(missing)}"
+
+
+def test_web_client_never_renders_server_text_as_html():
+    js = (ROOT / "web/app.js").read_text(encoding="utf-8")
+    assert "innerHTML" not in js and "insertAdjacentHTML" not in js and "document.write" not in js
 
 
 def test_requirements_files_resolve():

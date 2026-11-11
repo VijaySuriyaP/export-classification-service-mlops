@@ -26,9 +26,22 @@ from app import __version__
 from app.common import metrics
 from app.common.config import Settings, get_settings
 from app.common.logging_setup import configure_logging, correlation_id_var, run_id_var
-from app.common.run_store import QuarantineStore, RateLimiter, RunStore, new_id, utcnow
+from app.common.run_store import (
+    FeedbackStore,
+    QuarantineStore,
+    RateLimiter,
+    RunStore,
+    new_id,
+    summarise_feedback,
+    utcnow,
+)
 from app.common.tracing import configure_tracing, current_trace_id, inject_context
 from app.contracts import (
+    TERMINAL_STATUSES,
+    FeedbackAck,
+    FeedbackRecord,
+    FeedbackRequest,
+    FeedbackSummary,
     FieldError,
     RunRecord,
     RunRequest,
@@ -84,6 +97,7 @@ def create_app(settings: Settings | None = None, redis_client: redis.Redis | Non
 
     store = RunStore(redis_client, settings.run_ttl_seconds)
     quarantine = QuarantineStore(redis_client)
+    feedback = FeedbackStore(redis_client)
     limiter = RateLimiter(redis_client, settings.rate_limit_per_minute)
 
     app = FastAPI(title="Export Classification Check Service", version=__version__, description=DESCRIPTION)
@@ -151,7 +165,10 @@ def create_app(settings: Settings | None = None, redis_client: redis.Redis | Non
     def ready() -> JSONResponse:
         try:
             redis_client.ping()
-            return JSONResponse({"status": "ready", "redis": "ok", "queue_depth": store.queue_depth()})
+            # workers_alive is informational: the API can accept and queue runs with no workers, so it
+            # stays ready, but callers (web client, runbook) can see that queued runs will not progress.
+            return JSONResponse({"status": "ready", "redis": "ok", "queue_depth": store.queue_depth(),
+                                 "workers_alive": store.workers_alive()})
         except redis.RedisError as exc:
             return JSONResponse(status_code=503, content={"status": "not_ready", "redis": str(exc)})
 
@@ -253,6 +270,61 @@ def create_app(settings: Settings | None = None, redis_client: redis.Redis | Non
             return JSONResponse(status_code=404, content={"error": "not_found", "run_id": run_id})
         return {"run": RunStatusResponse.from_record(record).model_dump(mode="json"),
                 "events": store.events(run_id)}
+
+    @app.post(
+        "/runs/{run_id}/feedback",
+        status_code=201,
+        tags=["feedback"],
+        summary="Rate a finished run (thumbs up/down, reasons, optional comment)",
+        response_model=FeedbackAck,
+        responses={404: {"description": "Unknown or expired run"},
+                   409: {"description": "Run not finished yet"},
+                   422: {"description": "Invalid feedback body (field-level errors)"}},
+        openapi_extra={"requestBody": {"required": True, "content": {
+            "application/json": {"schema": FeedbackRequest.model_json_schema()}}}},
+    )
+    async def submit_feedback(request: Request, run_id: str = Path(pattern=_RUN_ID)):
+        cid = correlation_id_var.get() or uuid.uuid4().hex
+        try:
+            body = FeedbackRequest.model_validate(json.loads(await request.body()))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            return JSONResponse(status_code=422, content={"error": "validation_failed", "correlation_id": cid,
+                                                          "errors": [{"field": "body", "message": f"invalid JSON: {exc}",
+                                                                      "type": "json_invalid"}]})
+        except ValidationError as exc:
+            return JSONResponse(status_code=422, content={"error": "validation_failed", "correlation_id": cid,
+                                                          "errors": [e.model_dump() for e in _field_errors(exc)]})
+        record = await run_in_threadpool(store.get, run_id)
+        if record is None:
+            return JSONResponse(status_code=404, content={"error": "not_found", "run_id": run_id})
+        if record.status not in TERMINAL_STATUSES:
+            return JSONResponse(status_code=409, content={"error": "run_not_finished", "run_id": run_id,
+                                                          "status": record.status})
+        result = record.result
+        entry = FeedbackRecord(
+            **body.model_dump(), feedback_id=new_id(), run_id=run_id, client_id=client_id_of(request),
+            received_at=utcnow(), run_status=record.status,
+            route=result.route if result else None,
+            prompt_version=result.prompt_version if result else None,
+            hs_code=result.hs_code if result else None,
+        )
+        replaced = await run_in_threadpool(feedback.put, entry.model_dump(mode="json"))
+        metrics.FEEDBACK.labels(body.rating, entry.prompt_version or "unknown").inc()
+        token = run_id_var.set(run_id)
+        log.info("feedback received", extra={"rating": body.rating, "reasons": body.reasons,
+                                             "prompt_version": entry.prompt_version, "replaced": replaced})
+        run_id_var.reset(token)
+        return JSONResponse(status_code=201, content=FeedbackAck(
+            feedback_id=entry.feedback_id, run_id=run_id, replaced_previous=replaced).model_dump())
+
+    @app.get("/runs/{run_id}/feedback", tags=["feedback"], summary="Feedback given on one run")
+    def get_run_feedback(run_id: str = Path(pattern=_RUN_ID)) -> dict:
+        return {"run_id": run_id, "items": feedback.for_run(run_id)}
+
+    @app.get("/feedback/summary", tags=["feedback"], summary="Feedback aggregated by prompt version, route and day",
+             response_model=FeedbackSummary)
+    def feedback_summary(recent: int = Query(default=10, ge=0, le=100)):
+        return summarise_feedback(feedback.all(), recent=recent)
 
     @app.get("/quarantine", tags=["ops"], summary="Most recent rejected requests and their field errors")
     def get_quarantine(limit: int = Query(default=20, ge=1, le=200)) -> dict:

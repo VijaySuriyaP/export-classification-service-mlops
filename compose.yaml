@@ -6,6 +6,7 @@
 #   docker compose --profile loadtest up locust            # D6
 #
 # Deployment boundaries (justification in docs/platform.md):
+#   web           - browser client (static) + same-origin proxy to the api; no state, no secrets
 #   api           - light, latency-sensitive, stateless; scales/release independently of agents
 #   agent-worker  - heavy (models, embeddings, index), long-running; the unit we scale (A7)
 #   redis         - queue + run state; isolates submission from execution
@@ -51,6 +52,17 @@ services:
       - "${API_PORT:-8000}:8000"
     depends_on:
       redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
         condition: service_healthy
     restart: unless-stopped
 
