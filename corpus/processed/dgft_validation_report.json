@@ -1,0 +1,239 @@
+{
+  "source_id": "dgft-notification-09-2025",
+  "total_pages": 38,
+  "flagged_pages": [
+    2,
+    29,
+    30
+  ],
+  "pages": [
+    {
+      "page_number": 1,
+      "character_count": 1559,
+      "word_count": 226,
+      "status": "text_present"
+    },
+    {
+      "page_number": 2,
+      "character_count": 0,
+      "word_count": 0,
+      "status": "empty"
+    },
+    {
+      "page_number": 3,
+      "character_count": 1237,
+      "word_count": 172,
+      "status": "text_present"
+    },
+    {
+      "page_number": 4,
+      "character_count": 1187,
+      "word_count": 168,
+      "status": "text_present"
+    },
+    {
+      "page_number": 5,
+      "character_count": 834,
+      "word_count": 98,
+      "status": "text_present"
+    },
+    {
+      "page_number": 6,
+      "character_count": 1064,
+      "word_count": 117,
+      "status": "text_present"
+    },
+    {
+      "page_number": 7,
+      "character_count": 1099,
+      "word_count": 135,
+      "status": "text_present"
+    },
+    {
+      "page_number": 8,
+      "character_count": 973,
+      "word_count": 105,
+      "status": "text_present"
+    },
+    {
+      "page_number": 9,
+      "character_count": 1009,
+      "word_count": 119,
+      "status": "text_present"
+    },
+    {
+      "page_number": 10,
+      "character_count": 889,
+      "word_count": 100,
+      "status": "text_present"
+    },
+    {
+      "page_number": 11,
+      "character_count": 975,
+      "word_count": 113,
+      "status": "text_present"
+    },
+    {
+      "page_number": 12,
+      "character_count": 834,
+      "word_count": 94,
+      "status": "text_present"
+    },
+    {
+      "page_number": 13,
+      "character_count": 966,
+      "word_count": 95,
+      "status": "text_present"
+    },
+    {
+      "page_number": 14,
+      "character_count": 922,
+      "word_count": 105,
+      "status": "text_present"
+    },
+    {
+      "page_number": 15,
+      "character_count": 1079,
+      "word_count": 110,
+      "status": "text_present"
+    },
+    {
+      "page_number": 16,
+      "character_count": 1154,
+      "word_count": 121,
+      "status": "text_present"
+    },
+    {
+      "page_number": 17,
+      "character_count": 1057,
+      "word_count": 111,
+      "status": "text_present"
+    },
+    {
+      "page_number": 18,
+      "character_count": 857,
+      "word_count": 109,
+      "status": "text_present"
+    },
+    {
+      "page_number": 19,
+      "character_count": 1036,
+      "word_count": 131,
+      "status": "text_present"
+    },
+    {
+      "page_number": 20,
+      "character_count": 1059,
+      "word_count": 126,
+      "status": "text_present"
+    },
+    {
+      "page_number": 21,
+      "character_count": 1110,
+      "word_count": 139,
+      "status": "text_present"
+    },
+    {
+      "page_number": 22,
+      "character_count": 1180,
+      "word_count": 144,
+      "status": "text_present"
+    },
+    {
+      "page_number": 23,
+      "character_count": 865,
+      "word_count": 97,
+      "status": "text_present"
+    },
+    {
+      "page_number": 24,
+      "character_count": 876,
+      "word_count": 110,
+      "status": "text_present"
+    },
+    {
+      "page_number": 25,
+      "character_count": 997,
+      "word_count": 104,
+      "status": "text_present"
+    },
+    {
+      "page_number": 26,
+      "character_count": 1123,
+      "word_count": 124,
+      "status": "text_present"
+    },
+    {
+      "page_number": 27,
+      "character_count": 867,
+      "word_count": 113,
+      "status": "text_present"
+    },
+    {
+      "page_number": 28,
+      "character_count": 804,
+      "word_count": 110,
+      "status": "text_present"
+    },
+    {
+      "page_number": 29,
+      "character_count": 18,
+      "word_count": 3,
+      "status": "review_required"
+    },
+    {
+      "page_number": 30,
+      "character_count": 0,
+      "word_count": 0,
+      "status": "empty"
+    },
+    {
+      "page_number": 31,
+      "character_count": 1661,
+      "word_count": 191,
+      "status": "text_present"
+    },
+    {
+      "page_number": 32,
+      "character_count": 1801,
+      "word_count": 218,
+      "status": "text_present"
+    },
+    {
+      "page_number": 33,
+      "character_count": 1666,
+      "word_count": 182,
+      "status": "text_present"
+    },
+    {
+      "page_number": 34,
+      "character_count": 2053,
+      "word_count": 274,
+      "status": "text_present"
+    },
+    {
+      "page_number": 35,
+      "character_count": 1901,
+      "word_count": 227,
+      "status": "text_present"
+    },
+    {
+      "page_number": 36,
+      "character_count": 2184,
+      "word_count": 260,
+      "status": "text_present"
+    },
+    {
+      "page_number": 37,
+      "character_count": 1668,
+      "word_count": 194,
+      "status": "text_present"
+    },
+    {
+      "page_number": 38,
+      "character_count": 931,
+      "word_count": 132,
+      "status": "text_present"
+    }
+  ]
+}

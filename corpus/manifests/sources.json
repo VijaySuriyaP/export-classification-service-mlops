@@ -1,0 +1,36 @@
+{
+  "corpus_name": "export-classification-official-corpus",
+  "jurisdiction": "India",
+  "supported_chapters": [
+    "73",
+    "96"
+  ],
+  "sources": [
+    {
+      "source_id": "dgft-notification-09-2025",
+      "title": "DGFT Notification 09/2025-26",
+      "authority": "Directorate General of Foreign Trade",
+      "url": "https://content.dgft.gov.in/Website/dgftprod/06446c7d-4804-419e-bf41-88c2a3702776/NOTIFICATION%2009_UPLOAD%20ENG.pdf",
+      "local_path": "corpus/raw/dgft_notification_09_2025.pdf",
+      "version": "09/2025-26",
+      "document_date": "2025-05-19",
+      "retrieved_at": "2026-11-12T15:07:48.776547+00:00",
+      "sha256": "60902bba026a98b8716a55ddae3a59e3083484abede064266ae10e46d9513d17",
+      "parsing_status": "pending",
+      "indexed_chunks": 0
+    },
+    {
+      "source_id": "customs-tariff-chapter-73",
+      "title": "Indian Customs Tariff - Chapter 73: Articles of Iron or Steel",
+      "authority": "Central Board of Indirect Taxes and Customs",
+      "url": "",
+      "local_path": "corpus/raw/chapter_73.pdf",
+      "version": "Edition to be verified",
+      "document_date": null,
+      "retrieved_at": "2026-11-12T15:56:29.637859+00:00",
+      "sha256": "28f788209efa496ccc02a26fccfff59108ac6a7b6df1d7e095208559513931d0",
+      "parsing_status": "pending",
+      "indexed_chunks": 0
+    }
+  ]
+}
