@@ -1,0 +1,50 @@
+[
+  {
+    "id": "Q1",
+    "query": "What export policy amendments are mentioned in this notification?",
+    "relevant_chunk_ids": [
+      "027a7334f95a7dad",
+      "4e94c7ba7855fe2d"
+    ]
+  },
+  {
+    "id": "Q2",
+    "query": "Which products are affected by the notification?",
+    "relevant_chunk_ids": [
+      "418f2cd29ea2746f",
+      "7fe651356ae99e46",
+      "841e005aba8ef12f",
+      "a4b2ebb66427e2c1",
+      "e488b5cec5a9e65b"
+    ]
+  },
+  {
+    "id": "Q3",
+    "query": "What changes have been made to the export policy?",
+    "relevant_chunk_ids": [
+      "027a7334f95a7dad",
+      "4e94c7ba7855fe2d"
+    ]
+  },
+  {
+    "id": "Q4",
+    "query": "What conditions are specified for the affected products?",
+    "relevant_chunk_ids": [
+      "530df340a180a62b",
+      "90ff8a6d33aa50ad",
+      "96b8fbb24819d896",
+      "e488b5cec5a9e65b"
+    ]
+  },
+  {
+    "id": "Q5",
+    "query": "Which tariff codes are mentioned in the notification?",
+    "relevant_chunk_ids": [
+      "418f2cd29ea2746f",
+      "491779655d9a1f68",
+      "7fe651356ae99e46",
+      "97c40cba3ea060cc",
+      "a4b2ebb66427e2c1"
+    ]
+  }
+]
