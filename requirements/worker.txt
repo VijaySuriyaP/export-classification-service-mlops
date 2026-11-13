@@ -1,4 +1,5 @@
 -r base.txt
 opentelemetry-instrumentation-httpx==0.66b2
-# Agent and retrieval dependencies (LangGraph/CrewAI, LangChain/LlamaIndex, FAISS/Chroma,
-# sentence-transformers) are added here by the agent and retrieval workstreams.
+langgraph==1.2.20
+# Retrieval dependencies (LangChain/LlamaIndex, FAISS/Chroma, sentence-transformers) are
+# added here by the retrieval workstream if its implementation needs them.

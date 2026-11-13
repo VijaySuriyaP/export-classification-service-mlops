@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     worker_metrics_port: int = 9100
     worker_heartbeat_ttl_s: int = 30
     agent_runner: str = "app.agents.stub_runner:StubAgentRunner"
+    # Optional ``module:function`` for the corpus search owned by the retrieval workstream.
+    # The classification runner escalates safely when this is not configured.
+    retrieval_tool: str = ""
 
     # --- LLM provider (primary + optional fallback), behind our own interface ---
     llm_base_url: str = ""

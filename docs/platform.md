@@ -164,6 +164,20 @@ Rules for agent and retrieval code:
 * For load tests, the stub can return canned JSON for each agent prompt: see `STUB_RESPONSES_FILE` in
   `app/llm_stub/main.py`, which matches a marker such as `[[stub:classifier]]` in the prompt.
 
+### Two-agent LangGraph runner
+
+`app/agents/classification_runner.py` provides the classifier → verifier workflow. The graph performs an initial
+search, asks the classifier for a structured draft, asks the verifier to approve/research/escalate, and permits one
+targeted alternate search followed by a revised draft and a second verification. The platform's `RunRecorder`
+continues to enforce the call/step/time budgets and records every model call, search, and passage.
+
+The runner is deliberately not the Compose default until the corpus search function is available. To enable it,
+set `AGENT_RUNNER=app.agents.classification_runner:ClassificationRunner` and
+`RETRIEVAL_TOOL=<trusted.module>:<search_function>` in `.env`, then rebuild the worker. The search function accepts
+`(query, limit=5)` and returns passage dictionaries with `chunk_id`, `text`, `source_id`, and preferably `locator`.
+With no retrieval function or no returned passages, the graph escalates without producing a code. It never treats
+the LLM stub's generic response as a classification.
+
 ## 8. Caching and rate limiting (D7)
 
 * **Rate limit:** a fixed one-minute window per `X-Client-ID` (or per IP), `RATE_LIMIT_PER_MINUTE`, applied to
