@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from app.agents.classification_prompts import COMBINED_PROMPT_VERSION
 from app.agents.classification_runner import ClassificationRunner
 from app.agents.retrieval import RetrievalConfigError, load_retrieval_tool, normalise_passages
 from app.common.config import Settings
@@ -159,7 +160,7 @@ def test_approval_returns_verified_code_and_hides_client_reference():
     assert [c.chunk_id for c in result.citations] == ["chunk-a"]
     assert result.citations[0].source_id == "test-source-1"
     assert result.export_policy.policy == "Not determined"
-    assert result.prompt_version == "classifier-v1+verifier-v1"
+    assert result.prompt_version == COMBINED_PROMPT_VERSION
     assert result.disclaimer == DISCLAIMER
     assert (rec.llm_calls, rec.tool_calls) == (2, 1)
 
@@ -393,5 +394,5 @@ def test_stub_remains_the_default_runner(monkeypatch):
 
 def test_runner_matches_the_agent_runner_protocol():
     runner = ClassificationRunner(llm=None, settings=SimpleNamespace(retrieval_tool=""))
-    assert runner.prompt_version == "classifier-v1+verifier-v1"
+    assert runner.prompt_version == COMBINED_PROMPT_VERSION
     assert callable(runner.run)
