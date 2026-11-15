@@ -1,9 +1,9 @@
 # Service level objective — declared before any measurement (D6)
 
-**Status:** PROPOSED by the platform workstream on 2026-11-10. It needs team sign-off before the first load test.
-No load test has been run yet. Once the team agrees, this target must not change after results are seen.
-To declare it, set `"status": "DECLARED"` (plus `declared_at` and `declared_by`) in `loadtest/slo.json` and commit
-before measuring; `scripts/run_loadtest.py` refuses to run otherwise. Procedure: [`loadtest.md`](loadtest.md).
+**Status:** DECLARED on 2026-11-15, following Nikhil's confirmation in the project conversation that
+the teammates approved these targets. Originally proposed on 2026-11-10.
+The declaration is committed before formal measurement. Do not change the target after seeing results.
+The machine-readable declaration is `loadtest/slo.json`. Procedure: [`loadtest.md`](loadtest.md).
 
 ## Objective
 
