@@ -48,6 +48,11 @@ class ClassificationUser(HttpUser):
         with self.client.post("/runs", json=body, name="POST /runs", catch_response=True) as resp:
             if resp.status_code != 202:
                 resp.failure(f"submit {resp.status_code}")
+                events.request.fire(
+                    request_type="RUN", name="complete_run",
+                    response_time=(time.perf_counter() - started) * 1000, response_length=0,
+                    exception=RuntimeError(f"submit {resp.status_code}"), context={},
+                )
                 return
             run_id = resp.json()["run_id"]
         status, exc = None, None

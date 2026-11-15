@@ -68,14 +68,14 @@ def wait_queue_drained(api: str, timeout_s: int = 120) -> None:
             time.sleep(3)
             return
         time.sleep(2)
-    print("warning: queue did not drain; results of this run may be contaminated", file=sys.stderr)
+    raise RuntimeError("Queue did not drain; refusing to record contaminated measurements.")
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--workers", default="1,3", help="agent-worker replica counts, e.g. 1,3")
     p.add_argument("--users", default="5,10,20,40", help="concurrent simulated users per step")
-    p.add_argument("--duration", type=int, default=180, help="seconds per step (after ramp-up)")
+    p.add_argument("--duration", type=int, default=300, help="seconds per step (after ramp-up)")
     p.add_argument("--spawn-rate", type=float, default=0, help="users/s; default users/5")
     p.add_argument("--api", default="http://localhost:8000")
     p.add_argument("--prometheus", default="http://localhost:9090")
@@ -101,10 +101,13 @@ def main() -> int:
             prefix = f"w{workers}_u{users}"
             rate = args.spawn_rate or max(1.0, users / 5)
             ramp = int(users / rate) + 1
-            sh(["docker", "compose", "--profile", "loadtest", "run", "--rm", "-T", "locust",
+            completed = sh(["docker", "compose", "--profile", "loadtest", "run", "--rm", "-T", "locust",
                 "-f", "/mnt/locust/locustfile.py", "--host", "http://api:8000", "--headless",
                 "-u", str(users), "-r", str(rate), "-t", f"{args.duration + ramp}s", "--reset-stats",
+                "--stop-timeout", "180",
                 "--csv", f"/mnt/locust/results/{prefix}", "--only-summary"], check=False)
+            if completed.returncode not in (0, 1):
+                raise RuntimeError(f"Locust failed to execute (exit {completed.returncode})")
             time.sleep(10)  # one more scrape so the window is covered
             prom = collect_prometheus(args.prometheus, args.duration + 10)
             (RESULTS / f"{prefix}_prom.json").write_text(json.dumps(prom, indent=2), encoding="utf-8")
