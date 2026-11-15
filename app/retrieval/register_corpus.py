@@ -1,4 +1,3 @@
-
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -25,10 +24,37 @@ DOCUMENTS = [
         "source_id": "customs-tariff-chapter-73",
         "title": "Indian Customs Tariff - Chapter 73: Articles of Iron or Steel",
         "authority": "Central Board of Indirect Taxes and Customs",
-        "url": "",
+        "url": "https://www.cbic.gov.in/entities/cbic-content-mst/Njk%3D",
         "local_path": "corpus/raw/chapter_73.pdf",
-        "version": "Edition to be verified",
-        "document_date": None
+        "version": "Tariff as on 30.06.2025",
+        "document_date": "2025-06-30"
+    },
+    {
+        "source_id": "customs-tariff-general-rules-2025-06-30",
+        "title": "Indian Customs Tariff - General Rules for Interpretation",
+        "authority": "Central Board of Indirect Taxes and Customs",
+        "url": "https://www.cbic.gov.in/entities/cbic-content-mst/Njk%3D",
+        "local_path": "corpus/raw/general_rules.pdf",
+        "version": "Tariff as on 30.06.2025",
+        "document_date": "2025-06-30"
+    },
+    {
+        "source_id": "customs-tariff-chapter-96-2025-06-30",
+        "title": "Indian Customs Tariff - Chapter 96: Miscellaneous Manufactured Articles",
+        "authority": "Central Board of Indirect Taxes and Customs",
+        "url": "https://www.cbic.gov.in/entities/cbic-content-mst/Njk%3D",
+        "local_path": "corpus/raw/chapter_96.pdf",
+        "version": "Tariff as on 30.06.2025",
+        "document_date": "2025-06-30"
+    },
+    {
+        "source_id": "dgft-schedule-ii-2025-01-13",
+        "title": "DGFT ITC(HS) 2022 Schedule-II - Export Policy",
+        "authority": "Directorate General of Foreign Trade",
+        "url": "https://content.dgft.gov.in/Website/Notification_ITCHS.pdf",
+        "local_path": "corpus/raw/dgft_schedule_ii_2025-01-13.pdf",
+        "version": "Notification No. 50/2024-25",
+        "document_date": "2025-01-13"
     }
 ]
 
