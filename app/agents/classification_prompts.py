@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-CLASSIFIER_PROMPT_VERSION = "classifier-v1"
+CLASSIFIER_PROMPT_VERSION = "classifier-v2"
 VERIFIER_PROMPT_VERSION = "verifier-v1"
 COMBINED_PROMPT_VERSION = f"{CLASSIFIER_PROMPT_VERSION}+{VERIFIER_PROMPT_VERSION}"
 
@@ -28,21 +28,23 @@ METHOD
 1. Identify the product's essential facts (what it is, constituent materials, function, form). If facts that decide between headings are missing, answer needs_clarification and list targeted questions.
 2. Apply the General Rules for Interpretation in order, starting with GRI 1 (terms of the headings and the relevant Section and Chapter Notes). Move to GRI 2, 3(a)-(c), 4, 5 or 6 only if the earlier rule does not resolve the classification. List only rules you actually applied, in the order applied, e.g. ["GRI 1", "GRI 3(b)", "GRI 6"].
 3. Consider the Section and Chapter Notes present in the passages and state how each affects the result (notes_considered). If no relevant note was retrieved, say so in reasoning_summary. Never describe a note you were not shown.
-4. Every citation is a verbatim quote of at most 400 characters copied exactly from ONE passage, with that passage's chunk_id and source_id.
-5. If the passages do not support a code, answer insufficient_evidence. If the product belongs outside chapters 73 and 96, answer out_of_scope. Never guess a code.
-6. export_policy: include it only if a passage states an export-policy finding and you can quote it; otherwise set it to null. Never infer export policy.
-7. When you receive verifier_feedback and a previous_draft, address each issue using only the passages provided, including any new ones. Do not keep a claim the passages do not support.
+4. Every citation quote must be at most 400 characters and copied exactly from ONE retrieved passage.
+5. Each citation quote must be one contiguous substring of that passage. Copy every character exactly, including spaces, punctuation, and line breaks. Do not skip intervening text, combine separate excerpts, or reformat the passage. For table text, use a shorter exact substring if necessary.
+6. For hs_code, output only ASCII digits: exactly 4, 6, or 8 digits. Do not include spaces, punctuation, separators, or explanatory text. For example, write "96170011", not "9617 00 11".
+7. If the passages do not support a code, answer insufficient_evidence. If the product belongs outside chapters 73 and 96, answer out_of_scope. Never guess a code.
+8. export_policy: include it only if a passage states an export-policy finding and you can quote it; otherwise set it to null. Never infer export policy.
+9. When you receive verifier_feedback and a previous_draft, address each issue using only the passages provided, including any new ones. Do not keep a claim the passages do not support.
 
 OUTPUT
 Return exactly one JSON object and nothing else (no markdown, no prose):
 {
   "outcome": "classify" | "needs_clarification" | "out_of_scope" | "insufficient_evidence",
-  "hs_code": "4, 6 or 8 digits, or null unless outcome is classify",
+  "hs_code": "exactly 4, 6 or 8 digits with no spaces, or null unless outcome is classify",
   "heading_title": "string or null",
   "gri_applied": ["GRI 1", ...],
   "notes_considered": [{"reference": "string", "effect": "string"}],
   "reasoning_summary": "string",
-  "citations": [{"chunk_id": "string", "source_id": "string", "locator": "string or null", "quote": "string"}],
+  "citations": [{"chunk_id": "string", "source_id": "string", "locator": "string or null", "quote": "string copied exactly as a contiguous substring"}],
   "export_policy": null | {"policy": "Free|Restricted|Prohibited|STE|Not determined", "conditions": "string or null", "citations": [ ...same shape... ]},
   "clarification_questions": ["string"],
   "reason": "string, required unless outcome is classify"
