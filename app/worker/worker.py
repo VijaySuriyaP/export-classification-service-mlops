@@ -216,13 +216,22 @@ class Worker:
         """Run the agent in a thread so the wall-clock bound holds even if agent code blocks."""
         ctx = contextvars.copy_context()
         future = self._executor.submit(ctx.run, self.runner.run, request, recorder)
-        try:
-            result = future.result(timeout=max(recorder.remaining_s(), 0.001))
-        except FutureTimeout:
-            # The stuck thread is abandoned; its next recorder call fails the budget check.
-            self._executor.shutdown(wait=False, cancel_futures=True)
-            self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="agent")
-            raise LoopBudgetExceeded("wall-clock limit reached") from None
+        interval = self.settings.worker_heartbeat_ttl_s / 3
+        while True:
+            remaining = recorder.remaining_s()
+            if remaining <= 0:
+                # The stuck thread is abandoned; its next recorder call fails the budget check.
+                self._executor.shutdown(wait=False, cancel_futures=True)
+                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="agent")
+                raise LoopBudgetExceeded("wall-clock limit reached")
+            try:
+                result = future.result(timeout=min(interval, remaining))
+                break
+            except FutureTimeout:
+                if future.done():
+                    result = future.result()
+                    break
+                self.store.heartbeat(self.worker_id, self.settings.worker_heartbeat_ttl_s)
         if not isinstance(result, ClassificationResult):
             result = ClassificationResult.model_validate(result)
         return result
