@@ -1,4 +1,4 @@
-"""Placeholder agent runner used until the real agents are integrated.
+"""Deterministic stub runner for platform smoke tests and failure demonstrations.
 
 It exercises every platform path a real run uses - two named agents, a tool call, a model call
 through the resilient client, the event log and metrics - but it never proposes a classification.
@@ -38,7 +38,7 @@ class StubAgentRunner:
             pass
         return ClassificationResult(
             route="specialist-classification-review",
-            basis="Platform stub runner: the classification agents are not integrated yet.",
+            basis="Platform stub runner is active; no classification was performed.",
             verification=Verification(verified=False, attempts=0, notes="stub - nothing to verify"),
             escalation_reason="No classification performed (stub agent).",
             prompt_version=self.prompt_version,

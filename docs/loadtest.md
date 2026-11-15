@@ -31,9 +31,11 @@ Locust web UI alternative: `docker compose --profile loadtest up locust` then <h
 
 * **Stub, not a provider.** `LLM_BASE_URL` must point at `llm-stub` (the default). Keep
   `STUB_LATENCY_MS` at a realistic figure (1500 ms by default) so run time resembles a real model.
-* **Agent under test.** Results describe whatever `AGENT_RUNNER` is configured. Until the real agents are
-  integrated this is the stub agent (1 model call per run). **Re-run the matrix with the real agents before using the
-  numbers in the report**, because the real agent makes several model calls per run.
+* **Agent under test.** Results describe whatever `AGENT_RUNNER` is configured. `StubAgentRunner` makes one model
+  call per run and is suitable for platform-capacity measurements. `ClassificationRunner` exercises retrieval and
+  the classifier/verifier loop, but the LLM stub's default `OK` response is invalid JSON; use a real compatible
+  provider or explicitly configured canned JSON responses if measuring the full agent path. Record the runner and
+  provider mode in the report, and do not compare runs made with different configurations as if they were equivalent.
 * **Rate limit.** Each simulated user has its own `X-Client-ID`, so the per-client limit is not what limits
   throughput. If it ever does (HTTP 429 in Locust failures), raise `RATE_LIMIT_PER_MINUTE` and note it.
 * **Cache off.** Keep `RUN_CACHE_TTL_SECONDS=0` for the SLO runs; measure the cache separately (section 4).

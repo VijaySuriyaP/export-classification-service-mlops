@@ -16,8 +16,8 @@
       "document_date": "2025-05-19",
       "retrieved_at": "2026-11-12T15:07:48.776547+00:00",
       "sha256": "60902bba026a98b8716a55ddae3a59e3083484abede064266ae10e46d9513d17",
-      "parsing_status": "pending",
-      "indexed_chunks": 0
+      "parsing_status": "parsed",
+      "indexed_chunks": 80
     },
     {
       "source_id": "customs-tariff-chapter-73",
@@ -29,8 +29,8 @@
       "document_date": "2025-06-30",
       "retrieved_at": "2026-11-15T12:46:43.206341+00:00",
       "sha256": "5d7fd3359aef32a73923d28e384c35338ccad629f6050919e564945868004f73",
-      "parsing_status": "pending",
-      "indexed_chunks": 0
+      "parsing_status": "parsed",
+      "indexed_chunks": 55
     },
     {
       "source_id": "customs-tariff-general-rules-2025-06-30",
@@ -42,8 +42,8 @@
       "document_date": "2025-06-30",
       "retrieved_at": "2026-11-15T12:46:43.208921+00:00",
       "sha256": "888e124e2ac8844477e4a04e41dcc10b391d2fc1bbe8319522cd844a29eeddae",
-      "parsing_status": "pending",
-      "indexed_chunks": 0
+      "parsing_status": "parsed",
+      "indexed_chunks": 162
     },
     {
       "source_id": "customs-tariff-chapter-96-2025-06-30",
@@ -55,8 +55,8 @@
       "document_date": "2025-06-30",
       "retrieved_at": "2026-11-15T12:46:43.210131+00:00",
       "sha256": "e1c6b4f4aae1b46a1f10d4ead1c658406f6aa451752da6297328fbaf0ba0e8e0",
-      "parsing_status": "pending",
-      "indexed_chunks": 0
+      "parsing_status": "parsed",
+      "indexed_chunks": 26
     },
     {
       "source_id": "dgft-schedule-ii-2025-01-13",
@@ -68,8 +68,8 @@
       "document_date": "2025-01-13",
       "retrieved_at": "2026-11-15T12:46:43.214646+00:00",
       "sha256": "631d57f301fbb284439295e7c5eb41c98db7873ea84fdfe908f09e1894aeecb9",
-      "parsing_status": "pending",
-      "indexed_chunks": 0
+      "parsing_status": "parsed",
+      "indexed_chunks": 3182
     }
   ]
 }

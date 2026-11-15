@@ -18,15 +18,20 @@ This module provides evidence for downstream components. It does not make final 
 
 ## 2. Current Corpus
 
-The currently registered document is:
+Five source PDFs are registered in `manifests/sources.json` and stored in `raw/`:
 
-**DGFT Notification No. 09/2025-26**
+| Source | Recorded edition/date | Parsed pages | Indexed chunks |
+|---|---|---:|---:|
+| DGFT Notification 09/2025-26 | 2025-05-19 | 38 | 80 |
+| Customs Tariff, Chapter 73 | As on 2025-06-30 | 18 | 55 |
+| Customs Tariff, General Rules for Interpretation | As on 2025-06-30 | 41 | 162 |
+| Customs Tariff, Chapter 96 | As on 2025-06-30 | 9 | 26 |
+| DGFT ITC(HS) 2022 Schedule II, Export Policy | Notification 50/2024-25; 2025-01-13 | 1,020 | 3,182 |
+| **Total** | | **1,126** | **3,505** |
 
-Source: Directorate General of Foreign Trade, Government of India.
-
-The notification concerns amendments to Schedule II (Export Policy), ITC (HS) 2022, in alignment with the Finance Act, 2025.
-
-The corpus currently contains one registered PDF. The complete applicable tariff chapters, notes, General Rules for Interpretation, and export policy schedule still need to be collected and indexed.
+The PDF parsing status and per-source chunk counts are synchronized in the source manifest. The raw PDFs,
+processed text and index artifacts are checked into this repository; the worker image packages the FAISS
+index and its metadata.
 
 ## 3. Document Processing Pipeline
 
@@ -77,24 +82,23 @@ This information allows downstream components to reference the source document a
 
 ## 6. Evaluation
 
-The initial evaluation uses five questions and manually selected relevant passages from the top five retrieved results.
-
-**Preliminary Mean Precision@5: 0.72**
-
-This is not an independently validated retrieval accuracy score because the relevance labels were selected from the retrieval system's own results.
-
-A more comprehensive evaluation should include independently labeled queries and relevant passages across the full document corpus.
+The preliminary retrieval evaluation uses five questions, mostly about Notification 09/2025-26. It reports
+Mean Precision@5 of **0.72**, but the relevance labels were selected from retrieved results. This is not an
+independent retrieval score and is not classification accuracy. The project still needs independently labeled
+classification scenarios and reference evidence checked against official sources.
 
 ## 7. Running the Pipeline
 
-Run the following commands from the repository root after registering the source documents:
+Install the development requirements, then run the full pipeline from the repository root:
 
 ```bash
-python3 -m app.retrieval.parse_all_documents
-python3 -m app.retrieval.chunk_documents
-python3 -m app.retrieval.generate_embeddings
-python3 -m app.retrieval.build_index
+pip install -r requirements/dev.txt
+python -m app.retrieval.run_pipeline
 ```
+
+The pipeline registers source checksums, parses PDFs, chunks text, generates embeddings, builds the FAISS
+index, updates manifest status/counts, and reports elapsed time and throughput. Individual stage commands
+remain available in `app/retrieval/`.
 
 To evaluate retrieval:
 
@@ -104,12 +108,14 @@ python3 -m app.retrieval.evaluate_retrieval
 
 ## 8. Current Limitations
 
-- Only one official notification is currently indexed.
+- OCR has not been run. Notification 09/2025-26 pages 2 and 30 have no extracted text and page 29 is flagged
+  for review. The first page of Schedule II was also found to be image-only during local inspection.
+- Chapter 73 and Chapter 96 PDFs include a blank final page.
 - PDF tables may lose row and column relationships during text extraction.
 - Character-based chunking may split tariff entries or legal clauses.
-- Exact matching may miss codes broken across chunks.
-- Evaluation is preliminary and uses a small dataset.
-- The current index does not automatically refresh when source documents change.
+- Hybrid HS-code detection can mistake an unrelated four-digit number in a query for a tariff code.
+- Evaluation is preliminary and self-labeled; retrieval quality and classification accuracy are not established.
+- Rebuild the checked-in index after changing source PDFs; the running services do not refresh it automatically.
 
 ## 9. Scope
 

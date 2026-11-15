@@ -15,6 +15,7 @@ def parse_all_documents():
         manifest = json.load(file)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    manifest_changed = False
 
     for source in manifest["sources"]:
         source_id = source["source_id"]
@@ -22,6 +23,9 @@ def parse_all_documents():
 
         if not pdf_path.is_file():
             print(f"Skipping missing file: {pdf_path}")
+            source["parsing_status"] = "missing"
+            source["indexed_chunks"] = 0
+            manifest_changed = True
             continue
 
         pages = []
@@ -52,9 +56,19 @@ def parse_all_documents():
                 ensure_ascii=False
             )
 
+        source["parsing_status"] = "parsed"
+        source["indexed_chunks"] = 0
+        manifest_changed = True
+
         print(
             f"Parsed {source_id}: "
             f"{len(pages)} pages"
+        )
+
+    if manifest_changed:
+        MANIFEST_PATH.write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
         )
 
     print("Multi-document parsing completed.")

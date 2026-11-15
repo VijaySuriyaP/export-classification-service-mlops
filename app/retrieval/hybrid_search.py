@@ -23,9 +23,9 @@ class HybridSearch:
         # Find an HS code supplied explicitly or in the query.
         if hs_code is None:
             match = re.search(
-                r"(?<!\d)\d{8}(?!\d)|"
-                r"(?<!\d)\d{6}(?!\d)|"
-                r"(?<!\d)\d{4}(?!\d)",
+                # This service classifies chapters 73 and 96. Requiring one of those
+                # prefixes avoids treating unrelated years (for example, 2022) as HS codes.
+                r"(?<!\d)(?:73|96)\d{2}(?:[\s.]*\d{2}){0,2}(?!\d)",
                 query
             )
             if match:

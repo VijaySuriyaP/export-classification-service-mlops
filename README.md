@@ -5,7 +5,7 @@
 **Project level:** Jackfruit (Level 3)
 **Status audited:** 2026-11-15
 
-> **Current state:** The API, web client, queue-backed worker, safeguards, observability, two-agent workflow, corpus retrieval pipeline, and indexed corpus are in the repository. The default configuration still selects the stub agent. A recent local run with the classification runner and retrieval adapter found relevant Chapter 96 and DGFT passages, but the bundled LLM stub returned “OK” instead of the JSON required by the classifier. The run correctly escalated without returning a code. Retrieval is integrated, but a valid end-to-end classification has not yet been demonstrated.
+> **Current state:** The API, web client, queue-backed worker, safeguards, observability, two-agent workflow, corpus retrieval pipeline, and indexed corpus are in the repository. `.env.example` still selects the stub agent, while the local `.env` was configured for the Cohere-backed classification runner. A live run completed with a verifier-approved six-digit code (`961700`). A later 0.5 L run escalated because the model reformatted PDF table citations. The runner now has a narrow repair that can replace a reformatted code quote with an exact excerpt copied from the cited retrieved chunk; this repair still needs a live rerun and human source review.
 
 This service provides decision support. It does not file customs declarations, and a licensed customs broker makes the final decision.
 
@@ -36,7 +36,7 @@ Out of scope: filing declarations, calculating duties, preparing shipping docume
 | Load/performance | Locust scenario, report tooling and proposed SLO are present | Record SLO declaration before measurement; run and save load/scaling results; measure cache/cost effects |
 | Docs/release | API/platform docs, runbook, incident log, test matrix, demo checklist and historical evidence | Refresh docs/evidence to current configuration and produce the final project report |
 
-The repository’s checked-in integration evidence and test matrix record a 134-test pass, a 9/9 smoke run, and a three-worker smoke run from 2026-11-11. These are historical results from the stub configuration, not proof that the current classifier returns a supported classification. See [evidence notes](docs/evidence/README.md) and the [test matrix](docs/test-matrix.md).
+The repository’s checked-in integration evidence and test matrix record a 134-test pass, a 9/9 smoke run, and a three-worker smoke run from 2026-11-11. These are historical results from the stub configuration. The later manual Cohere run is recorded in [the test matrix](docs/test-matrix.md), but is not yet in the evidence folder or independently reviewed against the tariff. See [evidence notes](docs/evidence/README.md).
 
 ## Architecture
 
@@ -101,15 +101,20 @@ Known limitations:
 - Text extraction has not been OCR-corrected. The DGFT Notification 09 report flags pages 2 and 30 as empty and page 29 for review. Local inspection also found an image-only first page in the large Schedule II PDF. Treat these pages as missing evidence until reviewed/OCRed.
 - Chapter 73 and Chapter 96 PDFs have a blank final page; the extracted page counts/chunks above reflect the current files.
 - Tariff tables may lose row/column relationships in extracted text. Character-based splitting can break a legal clause or tariff entry.
-- Hybrid search uses a simple digit pattern to detect a possible HS code. A four-digit number elsewhere in a query can be mistaken for a code; verify such results.
-- The current manifest still records parsing_status as pending and indexed_chunks as 0 for all sources, even though parsed files and the 3,505-vector index exist. The pipeline does not update these manifest fields.
-- The current pipeline has individual commands, but does not yet provide a single end-to-end idempotent command with build time, corpus version, chunk count and throughput reporting.
+- Hybrid search only infers 4-, 6- or 8-digit codes beginning with supported chapter 73 or 96, so unrelated years such as 2022 do not trigger exact-code lookup. Other chapter codes can still be passed explicitly to the search function, but are outside this classifier's supported scope.
+- The full pipeline now updates parsing status and per-source indexed chunk counts in the manifest. Those fields are synchronized in the checked-in manifest.
+- The full pipeline reports source versions, total elapsed time and chunk throughput; index construction also reports vector build time and throughput. Re-run it after changing the source PDFs.
 
 For fuller corpus notes, see corpus/README.md; note that it has not yet been brought up to date with the five-source corpus and current index.
 
 ### Rebuild the corpus
 
-Run from the repository root in an environment with the retrieval dependencies installed. The repository’s worker requirements include NumPy, FAISS CPU and sentence-transformers. PDF parsing also needs PyMuPDF; it is not currently listed in the project requirements files.
+Run the full idempotent pipeline from the repository root after installing dev requirements:
+
+    pip install -r requirements/dev.txt
+    python -m app.retrieval.run_pipeline
+
+The individual stages can also be run separately:
 
     python -m app.retrieval.register_corpus
     python -m app.retrieval.parse_all_documents
@@ -224,7 +229,7 @@ This removes services but keeps Redis, Prometheus and Grafana data volumes. To a
 1. **Make the classifier produce valid outputs:** configure a compatible model or canned JSON responses, then run the vacuum-flask case and review every code, GRI step, note, export-policy statement and citation against the official passages.
 2. **Review corpus extraction gaps:** OCR or manually validate flagged pages; inspect tariff text/table structure; update the manifest parsing_status and indexed_chunks fields to reflect the actual artifacts.
 3. **Improve evaluation:** build at least 20 independently labeled cases with expected outcomes and evidence passages; report groundedness, context relevance, faithfulness and hallucination rate; compare two prompt versions before and after a deliberate change.
-4. **Complete corpus pipeline reporting:** make the registration/parse/chunk/embed/index process reproducible and idempotent, with corpus versions and time/count/throughput output.
+4. **Run the corpus pipeline once after these changes:** confirm the manifest reports parsed sources and the actual per-source chunk counts; preserve the resulting output as evidence.
 5. **Run the load test:** loadtest/slo.json currently says PROPOSED. The team should record its agreement and commit the declaration before measuring. Then run the 1- and 3-worker matrix in docs/loadtest.md and preserve the reports/evidence.
 6. **Measure cache and rate-limit effects:** compare run latency, cost and cache hit rate with the cache disabled/enabled.
 7. **Refresh project evidence and report:** the checked-in test matrix and screenshots describe the 2026-11-11 stub configuration. Re-run applicable checks after model integration, capture current UI/Grafana/Jaeger evidence, and finish the report/demo checklist.
@@ -234,7 +239,7 @@ The SLO values are already filled in: complete-run p95 60,000 ms, submit p95 300
 
 ## Testing and evidence
 
-The checked-in evidence in docs/evidence/ was captured on 2026-11-11 using the stub runner. It includes platform smoke results, 1- and 3-worker Compose records, resilience drills and web screenshots. That evidence remains useful for the platform, but screenshots/results labelled “stub” do not show a valid classification. The current project run demonstrated retrieval and safe escalation but has not yet been added to the evidence log.
+The checked-in evidence in docs/evidence/ was captured on 2026-11-11 using the stub runner. It includes platform smoke results, 1- and 3-worker Compose records, resilience drills and web screenshots. That evidence remains useful for the platform, but screenshots/results labelled “stub” do not show a valid classification. The later Cohere run is recorded in docs/test-matrix.md; it still needs human source review and fresh evidence capture after the citation repair is rerun.
 
 Use docs/test-matrix.md for test IDs and results, docs/demo-checklist.md for the presentation sequence, docs/runbook.md for operational procedures, and docs/incident-log.md for development incidents. Update evidence only from actual runs.
 

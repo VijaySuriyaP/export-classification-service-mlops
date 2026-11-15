@@ -111,6 +111,83 @@ def _citation_failures(rec: "RunRecorder", citations: list[CitationIn]) -> list[
     return failures
 
 
+def _exact_code_excerpt(passage_text: str, hs_code: str, model_quote: str) -> str | None:
+    """Build an exact source excerpt when a model reformats a tariff-table code citation.
+
+    This repair is deliberately narrow: the model's own quote must contain the proposed code,
+    and that code must appear as a complete digit sequence in this retrieved passage. The returned
+    quote is sliced from the original text, so the ordinary exact citation check remains unchanged.
+    """
+    code = re.sub(r"\D", "", hs_code)
+    quoted_code = re.sub(r"\D", "", model_quote)
+    if len(code) not in (4, 6, 8) or code not in quoted_code:
+        return None
+
+    code_pattern = r"(?<!\d)" + r"\s*".join(map(re.escape, code)) + r"(?!\d)"
+    match = re.search(code_pattern, passage_text)
+    if match is None:
+        return None
+
+    # Include context on both sides of the exact code while keeping the public quote short.
+    start = max(0, match.start() - 100)
+    end = min(len(passage_text), start + 400)
+    if match.end() > end:
+        start = max(0, match.end() - 400)
+        end = match.end()
+    return passage_text[start:end].strip() or None
+
+
+def _canonicalize_code_citations(
+    rec: "RunRecorder", citations: list[CitationIn], hs_code: str, *, stage: str
+) -> list[CitationIn]:
+    """Repair only reformatted code quotes by deriving a verbatim excerpt from retrieved text."""
+    canonical: list[CitationIn] = []
+    for citation in citations:
+        if rec.resolve_citation(citation.chunk_id, citation.quote):
+            canonical.append(citation)
+            continue
+
+        passage = rec.passages.get(citation.chunk_id)
+        if passage is None:
+            canonical.append(citation)
+            continue
+        retrieved_source = passage.get("source_id")
+        if retrieved_source and retrieved_source != citation.source_id:
+            canonical.append(citation)
+            continue
+
+        excerpt = _exact_code_excerpt(passage["text"], hs_code, citation.quote)
+        if excerpt is None:
+            canonical.append(citation)
+            continue
+
+        canonical.append(citation.model_copy(update={"quote": excerpt}))
+        rec.event(
+            "citation_quote_materialized", "classifier", stage=stage,
+            chunk_id=citation.chunk_id, source_id=citation.source_id,
+            locator=citation.locator or passage.get("locator"), quote=excerpt,
+            reason="model quote reformatted the HS code; exact excerpt copied from retrieved passage",
+        )
+    return canonical
+
+
+def _canonicalize_draft_citations(
+    rec: "RunRecorder", draft: DraftOutput, *, stage: str
+) -> DraftOutput:
+    if not draft.hs_code:
+        return draft
+
+    citations = _canonicalize_code_citations(rec, draft.citations, draft.hs_code, stage=stage)
+    export_policy = draft.export_policy
+    if export_policy is not None:
+        export_policy = export_policy.model_copy(update={
+            "citations": _canonicalize_code_citations(
+                rec, export_policy.citations, draft.hs_code, stage=stage
+            )
+        })
+    return draft.model_copy(update={"citations": citations, "export_policy": export_policy})
+
+
 def _to_citation(rec: "RunRecorder", c: CitationIn) -> Citation:
     locator = c.locator or rec.passages.get(c.chunk_id, {}).get("locator")
     return Citation(source_id=c.source_id, chunk_id=c.chunk_id, locator=locator, quote=c.quote)
@@ -294,6 +371,7 @@ class ClassificationRunner:
                 f"The retrieved passages do not support a classification: {draft.reason or 'no detail given'}")}
 
         assert draft.hs_code is not None  # guaranteed by DraftOutput for outcome == "classify"
+        draft = _canonicalize_draft_citations(rec, draft, stage=stage)
         if draft.hs_code[:2] not in SUPPORTED_CHAPTERS:
             return {"draft": draft, "halt": _escalate(
                 f"The proposed code falls outside the supported chapters ({', '.join(SUPPORTED_CHAPTERS)}); "

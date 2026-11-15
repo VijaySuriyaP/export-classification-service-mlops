@@ -55,6 +55,11 @@ def chunk_all_documents():
 
     for source in manifest["sources"]:
         source_id = source["source_id"]
+        if source.get("parsing_status") != "parsed":
+            raise RuntimeError(
+                f"Source {source_id} is not parsed (status: {source.get('parsing_status', 'unset')}). "
+                "Run app.retrieval.parse_all_documents first."
+            )
 
         input_path = PROCESSED_DIR / f"{source_id}.json"
 

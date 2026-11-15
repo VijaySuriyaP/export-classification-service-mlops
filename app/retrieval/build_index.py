@@ -1,5 +1,7 @@
 
 import json
+import time
+from collections import Counter
 from pathlib import Path
 
 import faiss
@@ -12,9 +14,11 @@ INDEX_DIR = ROOT / "corpus/index"
 EMBEDDINGS_PATH = INDEX_DIR / "embeddings.npy"
 METADATA_PATH = INDEX_DIR / "chunks_metadata.json"
 FAISS_INDEX_PATH = INDEX_DIR / "faiss.index"
+MANIFEST_PATH = ROOT / "corpus/manifests/sources.json"
 
 
 def build_index():
+    started = time.perf_counter()
     if not EMBEDDINGS_PATH.exists():
         raise FileNotFoundError(
             "Embeddings not found. Generate embeddings first."
@@ -59,11 +63,24 @@ def build_index():
         index,
         str(FAISS_INDEX_PATH)
     )
+    build_seconds = time.perf_counter() - started
+
+    counts = Counter(chunk["source_id"] for chunk in chunks)
+    with open(MANIFEST_PATH, "r", encoding="utf-8") as file:
+        manifest = json.load(file)
+    for source in manifest["sources"]:
+        source["indexed_chunks"] = counts.get(source["source_id"], 0)
+    with open(MANIFEST_PATH, "w", encoding="utf-8") as file:
+        json.dump(manifest, file, indent=2, ensure_ascii=False)
+        file.write("\n")
 
     print("FAISS index created successfully.")
     print("Total indexed vectors:", index.ntotal)
     print("Vector dimensions:", index.d)
     print("Index saved:", FAISS_INDEX_PATH)
+    print("Manifest chunk counts updated:", MANIFEST_PATH)
+    print("Index build seconds:", round(build_seconds, 2))
+    print("Index throughput (vectors/second):", round(index.ntotal / build_seconds, 2) if build_seconds else 0)
 
 
 if __name__ == "__main__":

@@ -7,15 +7,15 @@ clean clone, at least 2 days before the presentation.
 | # | Item | Ready? | Blocked on |
 |---|---|---|---|
 | 1 | `docker compose up` from a clean clone | ✅ Ready | — |
-| 2 | Valid request → routed recommendation with resolving citations | 🟡 Path ready; stub has no citations | Agents (VIKAS) + retrieval (Utkarsh) |
-| 3 | Trace one complete run (tools, queries, passages, prompt version, latency, cost) | 🟡 Works with stub; needs real tools to show passages | Agents + retrieval |
+| 2 | Valid request → routed recommendation with resolving citations | 🟡 One Cohere-backed run completed; 0.5 L run escalated on reformatted citations; rerun after citation repair and human review | Citation repair validation + official-source review |
+| 3 | Trace one complete run (tools, queries, passages, prompt version, latency, cost) | 🟡 API events and trace exist; capture current Cohere-backed run | Updated evidence capture |
 | 4 | Malformed request → quarantine + proof no run started | ✅ Ready | — |
-| 5 | Out-of-scope case → escalation, not fabrication | 🟡 The stub escalates everything, so this proves nothing yet | Agents |
-| 6 | Self-verification catches an unsupported answer → re-search or escalate | 🔴 Not demonstrable | Agents (verifier loop) |
+| 5 | Out-of-scope case → escalation, not fabrication | 🟡 Classification runner is implemented; scenario not yet run | Run and record an out-of-scope case |
+| 6 | Self-verification catches an unsupported answer → re-search or escalate | 🟡 Verifier loop is implemented; scenario not yet run | Run and record a verifier challenge case |
 | 7 | Prompt-injection attempt → guardrail response | ✅ Ready | — |
 | 8 | Provider unavailable → circuit breaker + fallback path | ✅ Ready (fallback = escalation; no second provider configured) | Optional: a fallback provider in `.env` |
-| 9 | Locust vs predeclared p95, failure concurrency, bottleneck, scaling | 🔴 Not run | SLO sign-off by the team, then NIKHIL runs it after the agents land |
-| 10 | Vacuum-flask case with rule, heading and notes cited | 🔴 Not demonstrable | Agents + corpus + Evaluation 1 reference answer |
+| 9 | Locust vs predeclared p95, failure concurrency, bottleneck, scaling | 🔴 Not run | Team SLO declaration, then run the matrix |
+| 10 | Vacuum-flask case with rule, heading and notes cited | 🟡 Six-digit run completed; eight-digit run awaits citation-repair validation and human source review | Resolve citation formatting; agree/check reference answer |
 
 ## Before the demo (T-30 min)
 
@@ -33,13 +33,15 @@ Open these tabs in this order: web client <http://localhost:8080>, API docs <htt
 
 ## Script
 
-**1. Clean start.** Show `git status` (clean clone) and `docker compose ps`: 10 services, all healthy.
+**1. Clean start.** Show `git status` (clean clone) and `docker compose ps`: nine default services, all healthy.
 Evidence: `evidence/compose-ps-1-worker.txt`, CI `stack` job.
 
 **2 + 10. Valid request / vacuum flask.** Web client → "Use the vacuum-flask demo case" → Submit. Narrate the
 timeline Queued → Running → Finished, then the route card, the HS code with heading title, the GRI order, and the
 citations (each one shows source, chunk and verbatim quote). Point out the disclaimer.
-*Currently:* the stub returns "Specialist classification review — agents not integrated yet".
+*Current recorded run:* Cohere-backed classification returned a verifier-approved six-digit `961700`. A later
+0.5 L run escalated because the model changed quote formatting; do not present that later run as a completed answer.
+After the exact-quote repair is validated, use a fresh run and verify it against the tariff PDF.
 
 **3. Trace.** In the same run, open "Run reconstruction: event log": steps, tool calls with queries and passage
 counts, model calls with prompt version, tokens and latency. Click the trace ID to open the same run in Jaeger
@@ -94,6 +96,6 @@ how prompt v1 and v2 are compared from user feedback (L6).
 
 | Item | Who | Starts when |
 |---|---|---|
-| 2, 3, 5, 6, 10 | VIKAS (agents) + Utkarsh (corpus/retrieval); Vijay re-runs the C-tests and re-captures screenshots | Real `AGENT_RUNNER` merged and the corpus indexed; the vacuum-flask reference answer agreed at Evaluation 1 |
-| 9 | NIKHIL runs it; whole team signs off the SLO first | SLO marked `DECLARED` in `loadtest/slo.json` (team decision), and preferably the real agents (or canned stub responses) in place |
+| 2, 3, 5, 6, 10 | VIKAS (agent review) + Utkarsh (corpus/retrieval); Vijay re-runs the C-tests and re-captures screenshots | Citation repair validated; source passages and vacuum-flask reference reviewed |
+| 9 | NIKHIL runs it; whole team signs off the SLO first | SLO marked `DECLARED` in `loadtest/slo.json` (team decision); record which runner/provider configuration was measured |
 | Dress rehearsal | Vijay coordinates, all attend | After the above; ≥ 1 week before the presentation (repo deadline) |

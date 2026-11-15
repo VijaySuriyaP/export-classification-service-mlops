@@ -35,13 +35,13 @@ Owner: NIKHIL (PES1UG24AM311). This covers requirements F1, F2, F8, A4, A5, A6, 
 | Boundary | Why it is a separate service |
 |---|---|
 | `api` | Light and latency-sensitive (validation, enqueue, polling). It must stay responsive while runs take tens of seconds, and it can be released without touching agent code. It holds no run state. |
-| `agent-worker` | Heavy resource profile once the agents and retrieval land (embedding model, index, many model calls). This is the unit scaled with `--scale agent-worker=N`. A crash in agent code cannot take the API down. |
+| `agent-worker` | Heavy resource profile: classifier/verifier workflow, local embedding model and packaged FAISS index. This is the unit scaled with `--scale agent-worker=N`. A crash in agent code cannot take the API down. |
 | `redis` | Decouples submission from execution (A4). Holds the queue, run records, event logs, quarantine, rate-limit counters and cache. AOF persistence is on, so queued runs survive a restart. |
 | `llm-stub` | Replaces the model provider in load tests (D6), so we measure our system rather than the provider's rate limits. Its failure modes are switchable for the circuit-breaker demo (A5). |
 | observability (`prometheus`, `grafana`, `jaeger`, `redis-exporter`) | Kept off the request path. If any of them fails, serving still works. |
 
-The vector index is not in this list yet. The retrieval workstream decides whether it lives in the worker container
-on a volume (FAISS) or in its own service (Chroma); either fits behind `recorder.tool_call`.
+The FAISS index and metadata are copied into the worker image at build time and exposed through the retrieval
+adapter behind `recorder.tool_call`.
 
 ## 2. Asynchronous runs (A4)
 
@@ -136,7 +136,7 @@ Set `AGENT_RUNNER=app.agents.<module>:<Class>` in `.env`. The class is built onc
 
 ```python
 class ClassificationAgents:
-    prompt_version = "classifier-v1+verifier-v1"
+    prompt_version = "classifier-v2+verifier-v1"
 
     def __init__(self, *, llm, settings):
         self.graph = build_graph()            # LangGraph / CrewAI
@@ -146,7 +146,7 @@ class ClassificationAgents:
             passages = recorder.tool_call("classifier", "corpus_search", search, query, query=query)
             # retrieval tools return [{"chunk_id", "source_id", "text", "score", "locator"}, ...]
         with recorder.step("classifier", "draft"):
-            resp = recorder.llm_call("classifier", "draft", messages, prompt_version="classifier-v1")
+            resp = recorder.llm_call("classifier", "draft", messages, prompt_version="classifier-v2")
             # resp.text, resp.prompt_tokens, resp.cost_usd ...
         with recorder.step("verifier", "verify"):
             ...
@@ -207,8 +207,9 @@ Run it locally against a running stack with `python scripts/smoke_test.py --expe
 
 Not done yet (platform side):
 * Measurements: the scaling effect and Locust results against the declared SLO (procedure and tooling in
-  `docs/loadtest.md`; waiting for the team to declare the SLO and for the real agents), and the cache effect.
+  `docs/loadtest.md`; waiting for team SLO declaration), and the cache effect.
 * ~~Feedback endpoint (L6)~~: done by the web-client workstream. `POST /runs/{id}/feedback`,
   `GET /feedback/summary` ([`api-contract.md`](api-contract.md#feedback-l6)), and the `web` service (browser
   client + same-origin `/api/` proxy). `/ready` now also reports `workers_alive` (INC-001). Please review.
-* Real provider configuration (free tier) once the agents are integrated.
+* A real provider can be selected with runtime configuration. The local Cohere integration has completed one
+  run; its citation behavior and tariff reasoning still need the documented validation before demonstration.

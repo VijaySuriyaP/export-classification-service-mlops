@@ -1,6 +1,7 @@
 """Retrieval seam for the classification runner.
 
-The corpus search is owned by the retrieval workstream. The runner only depends on this contract:
+The runner depends on this small contract, implemented for the official corpus by
+``app.retrieval.tool:search``:
 
     def search(query: str, limit: int = 5) -> list[dict]
 

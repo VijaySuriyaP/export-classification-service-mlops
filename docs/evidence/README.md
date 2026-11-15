@@ -1,9 +1,10 @@
 # Evidence
 
-Genuine output from the running system. **No mock screenshots.** Captured on 2026-11-11 on Windows 11 + Docker
-Desktop 29.8.2 from branch `feature/web-client-feedback-docs` (base `29bf8ad`), with the **stub agent runner**
-(`stub-v0`, which always escalates). Files with `-stub` in the name must be re-captured once the real agents are
-integrated: `python scripts/capture_screenshots.py --tag agents-v1`.
+Genuine output from the running system. **No mock screenshots.** The entries below were captured on 2026-11-11
+on Windows 11 + Docker Desktop 29.8.2 from branch `feature/web-client-feedback-docs` (base `29bf8ad`), with
+the stub agent runner (`stub-v0`, which always escalates). Treat `-stub` screenshots as historical platform
+evidence. Re-capture the classification flow after the current Cohere-backed run passes citation review:
+`python scripts/capture_screenshots.py --tag agents-v1`.
 
 | File | What it shows | Test IDs |
 |---|---|---|
@@ -26,5 +27,7 @@ integrated: `python scripts/capture_screenshots.py --tag agents-v1`.
 | `screenshots/web-no-workers-warning.png` | Red "No workers running" pill | W-08, INC-001 |
 | `screenshots/web-mobile-390px-stub.png` | Phone-width layout | W-09 |
 
-Still to capture (screenshots of live Grafana and Jaeger UIs and the Locust report) after the agents land; see
-[`../demo-checklist.md`](../demo-checklist.md).
+The evidence above is a historical platform baseline from 2026-11-11 and uses the stub runner. A later local
+Cohere-backed run produced a verifier-approved six-digit classification, while a 0.5 L case escalated on
+reformatted citation quotes. The current exact-quote materialization change needs a live rerun. Capture updated
+classification, Grafana/Jaeger and load-test evidence after the review steps in [`../demo-checklist.md`](../demo-checklist.md).

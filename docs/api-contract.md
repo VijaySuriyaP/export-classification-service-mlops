@@ -96,7 +96,7 @@ Error `type` values include the Pydantic types (`missing`, `extra_forbidden`, `s
     "export_policy": {"policy": "Free", "conditions": null, "citations": […]},
     "verification": {"verified": true, "attempts": 1, "strategy_log": ["…"], "notes": null},
     "escalation_reason": null,
-    "prompt_version": "classifier-v1",
+    "prompt_version": "classifier-v2+verifier-v1",
     "policy_adjustments": [],
     "disclaimer": "Proposed classification for decision support only. …"
   },
@@ -124,6 +124,7 @@ Returns `{"run": <status response>, "events": [...]}`. Event `kind`s in order of
 * `step_start` / `step_end` (agent, step, outcome, latency_ms)
 * `tool_call` (tool, query, outcome, latency_ms, passages[])
 * `llm_call` (agent, step, prompt_version, provider, model, attempts, fallback_used, prompt_tokens, completion_tokens, cost_usd, latency_ms, messages, response)
+* `citation_quote_materialized` (classifier, stage, cited chunk/source, exact quote copied from the retrieved passage when a reformatted HS-code quote is safely recoverable)
 * `output_policy`
 * `budget_exceeded`
 * `degraded`

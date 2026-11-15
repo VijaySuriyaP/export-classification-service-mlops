@@ -1,18 +1,24 @@
 # Two-agent classification runner
 
 `app/agents/classification_runner.py` implements the classifier -> verifier workflow described in
-`docs/platform.md` section 7. This page covers setup and the contract the retrieval workstream must meet.
+`docs/platform.md` section 7. This page covers setup and the retrieval adapter contract.
 
 ## Status
 
-The runner is **not** the default. `AGENT_RUNNER` still points at the stub, so existing smoke tests are
-unchanged. Do not describe classification as working end to end until:
+The runner is implemented, but `.env.example` still selects the stub so platform smoke tests remain
+deterministic. The local `.env` can select `ClassificationRunner` and the corpus adapter. Do not describe
+classification as fully validated until:
 
-1. a real retrieval function over the official tariff corpus is configured, and
-2. the vacuum-flask example is run and its code, GRI steps, notes and citations are checked by a person
-   against the official passages.
+1. the model provider returns schema-valid classifier and verifier output,
+2. the vacuum-flask code, GRI steps, notes and citations are checked by a person against official passages, and
+3. the classification and safe-escalation cases are recorded in the test matrix.
 
-The unit tests use synthetic passages and only prove the control flow and safety checks.
+The local Cohere-backed run completed once with a verified six-digit `961700` result. A later 0.5 L run
+correctly escalated when the model reconstructed PDF table citations instead of quoting them exactly. The
+runner now materializes a verbatim citation excerpt from the cited retrieved chunk only when the model's
+quote contains the proposed code and that code is present in the chunk. The ordinary exact-text check and
+verifier remain in place. This code path still needs a live run and human review. The unit tests use synthetic
+passages and prove control flow/safety behavior, not tariff accuracy.
 
 ## Enable it
 
@@ -55,7 +61,7 @@ corpus text only, never samples.
 | step (agent.step) | what happens |
 |---|---|
 | `classifier.initial_search` | one search from the submitted description and materials |
-| `classifier.draft` | model returns a JSON draft; code checks schema, scope (ch. 73/96) and that every citation resolves to a chunk retrieved in this run, same source, quote present |
+| `classifier.draft` | model returns a JSON draft; code checks schema and scope (ch. 73/96), confirms each citation belongs to a chunk retrieved in this run and the stated source, and requires the final quote to be an exact excerpt from that chunk. Reformatted HS-code quotes can be replaced by an exact excerpt only when that code appears in both the model quote and cited chunk. |
 | `verifier.verify` | independent model check of code, GRI steps, notes and citations against the passages: `approve`, `research` (one different query) or `escalate` |
 | `verifier.followup_search` | only on `research`; a repeated or empty query, or a result with no new passages, escalates |
 | `classifier.revise` | revised draft using the new passages and the verifier's issues; same code checks |
@@ -65,7 +71,8 @@ At most 6 steps, 4 model calls and 2 searches per run, inside the platform's own
 (`RUN_MAX_STEPS=12`, `RUN_MAX_LLM_CALLS=10`, `RUN_MAX_TOOL_CALLS=20` by default).
 
 Events added to the run log: `search_strategy` (query, rationale, passages returned, new chunk ids),
-`citation_check`, `handoff` (classifier -> verifier with the draft summary; verifier -> classifier with
+`citation_quote_materialized` (exact excerpt copied from a cited retrieved chunk when code-based recovery
+is valid), `citation_check`, `handoff` (classifier -> verifier with the draft summary; verifier -> classifier with
 the issues and follow-up query) and `verdict`. `Verification.strategy_log` lists the searches in order.
 
 ## Outcomes
@@ -82,7 +89,7 @@ otherwise it is `Not determined`.
 
 ## Prompts and caching
 
-`prompt_version` is `classifier-v1+verifier-v1`. Bump the constants in `classification_prompts.py` when
+`prompt_version` is `classifier-v2+verifier-v1`. Bump the constants in `classification_prompts.py` when
 either prompt changes: they are recorded on every model call and are part of the run-cache key. Prompts
 end with `[[stub:classifier]]` / `[[stub:verifier]]` so `STUB_RESPONSES_FILE` can serve canned JSON in
 load tests.

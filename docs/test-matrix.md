@@ -73,19 +73,19 @@ The screenshots come from a real headless Edge typing into the live page (`scrip
 | D-03 | Stack up | RB-3: stop workers, submit 3, start workers | Runs wait queued and complete after restart; operator can see the cause | Runs completed, but `/ready` said "ready" with no workers → **INC-001**, fixed | PASS after fix | `evidence/drill-worker-backlog.txt`, `evidence/drill-worker-backlog-after-fix.txt` |
 | D-04 | Stack up | RB-4: stop API, probe web, recreate API | Web stays up and returns 502 on /api; recovers with no web restart | as expected | PASS | `evidence/drill-api-down-web-proxy.txt` |
 
-## 5. Classification behaviour (needs the real agents and corpus)
+## 5. Classification behaviour (agent and corpus code implemented; live validation in progress)
 
-These are the tests the stub cannot answer. They become runnable once `AGENT_RUNNER` points at the real agents
-(VIKAS) and the retrieval tools index the corpus (Utkarsh). The expected outcomes for the vacuum flask are agreed at
-Evaluation 1. The values here are **not** the reference answer.
+These cases require `AGENT_RUNNER` to point at `ClassificationRunner` and a model provider capable of valid JSON.
+The expected outcomes for the vacuum flask still require human review against the official tariff. The model output
+is not ground truth.
 
 | ID | Precondition / input | Steps | Expected | Actual | Result | Evidence |
 |---|---|---|---|---|---|---|
-| C-01 | "Stainless steel vacuum flask with a moulded plastic outer body." | Submit via web; open events | Heading that **names the article** found; GRI applied in order; notes considered; citations resolve to retrieved text; not stopped at a steel heading | — | BLOCKED: agents + corpus | — |
-| C-02 | Out-of-scope product, e.g. "Laptop computer with aluminium chassis" | Submit | `escalated` with an out-of-scope basis; no code | Stub escalates everything, so a pass now would prove nothing | BLOCKED: agents | — |
-| C-03 | Case where the first draft is unsupported | Submit; inspect `verification.strategy_log` + events | Verifier rejects; a different search strategy or escalation follows | — | BLOCKED: agents | — |
-| C-04 | Ambiguous after GRI 3 | Submit | `specialist-classification-review` with the competing headings named | — | BLOCKED: agents | — |
-| C-05 | Valid request | Open events and the Jaeger trace | Tool calls with queries and passages, prompt version, per-step latency and cost | Works end to end with the stub (1 tool, 1 model call). Needs real retrieval tools to be meaningful. | BLOCKED (partial) | `evidence/screenshots/web-valid-run-stub.png` |
+| C-01 | "Stainless steel vacuum flask with a moulded plastic outer body." | Submit via web/API; inspect result, passages and citations | Heading that **names the article** found; GRI applied in order; notes considered; citations resolve to retrieved text; not stopped at a steel heading | Run `1649fa5c26444844a1a23e33bb11c99a` completed with verified six-digit code `961700`; verifier approved. A 0.5 L run (`305f7838ef0c48b2afd809e1b987b9e8`) escalated because Cohere reformatted tariff-table quotes. Human tariff review and a rerun after the exact-quote materialization change remain outstanding. | PARTIAL | Local run output and `/events` for the listed run IDs; not yet captured in `docs/evidence/` |
+| C-02 | Out-of-scope product, e.g. "Laptop computer with aluminium chassis" | Submit | `escalated` with an out-of-scope basis; no code | Not yet run with ClassificationRunner | NOT RUN | — |
+| C-03 | Case where the first draft is unsupported | Submit; inspect `verification.strategy_log` + events | Verifier rejects; a different search strategy or escalation follows | Not yet run | NOT RUN | — |
+| C-04 | Ambiguous after GRI 3 | Submit | `specialist-classification-review` with the competing headings named | Reference scenario still needs agreement/review | BLOCKED: reference case | — |
+| C-05 | Valid request | Open events and the Jaeger trace | Tool calls with queries and passages, prompt version, per-step latency and cost | Cohere-backed run `1649fa5c26444844a1a23e33bb11c99a` completed with retrieval, two LLM calls and a verifier approval; capture/trace evidence not yet saved. | PARTIAL | Local run output and `/events`; pending saved evidence |
 | E-01 | 20-scenario evaluation set | Evaluation CLI | Groundedness, context relevance, faithfulness, hallucination rate; before/after one change | — | BLOCKED: evaluation set + agents | — |
 | L-01 | SLO `DECLARED` in `loadtest/slo.json` | `scripts/run_loadtest.py --workers 1,3` | p50/p95 vs target, RPS, failure concurrency, bottleneck, scaling effect | — | BLOCKED: SLO sign-off (team) + agents | `docs/loadtest.md` |
 
