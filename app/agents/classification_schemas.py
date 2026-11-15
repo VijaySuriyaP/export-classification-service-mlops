@@ -57,6 +57,13 @@ class DraftOutput(_Model):
     clarification_questions: list[str] = Field(default_factory=list, max_length=5)
     reason: str | None = Field(default=None, max_length=500, description="Why, for non-classify outcomes.")
 
+    @field_validator("hs_code", mode="before")
+    @classmethod
+    def _compact_hs_code(cls, value: object) -> object:
+        if isinstance(value, str):
+            return "".join(value.split())
+        return value
+
     @field_validator("clarification_questions")
     @classmethod
     def _short_questions(cls, value: list[str]) -> list[str]:
