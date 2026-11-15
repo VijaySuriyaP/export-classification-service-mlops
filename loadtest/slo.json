@@ -1,8 +1,8 @@
 {
-  "status": "PROPOSED",
-  "declared_at": null,
-  "declared_by": null,
-  "note": "Set status to DECLARED (with declared_at and declared_by) once the team agrees, BEFORE any measured run. scripts/run_loadtest.py refuses to measure while status is PROPOSED. Rationale: docs/slo.md.",
+  "status": "DECLARED",
+  "declared_at": "2026-11-15",
+  "declared_by": "NIKHIL (PES1UG24AM311), reporting team approval",
+  "note": "Nikhil confirmed in this project conversation that teammates approved the proposed targets. Recorded before formal load-test execution; rationale: docs/slo.md. Failure rate must be strictly below 1%.",
   "complete_run_p95_ms": 60000,
   "submit_p95_ms": 300,
   "max_failure_rate": 0.01

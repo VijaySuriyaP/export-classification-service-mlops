@@ -68,7 +68,7 @@ def test_csv_without_run_row_is_rejected(tmp_path):
 
 @pytest.mark.parametrize("kwargs, met", [
     ({"p95": 59_999}, True), ({"p95": 60_000}, True), ({"p95": 60_001}, False),     # the boundary is inclusive
-    ({"failures": 1, "count": 100}, True), ({"failures": 2, "count": 100}, False),   # 1% allowed, 2% not
+    ({"failures": 1, "count": 101}, True), ({"failures": 1, "count": 100}, False),   # strictly below 1%
     ({"submit_p95": 301}, False),
 ])
 def test_slo_verdict(tmp_path, kwargs, met):

@@ -77,7 +77,7 @@ def load_results(directory: Path) -> list[Result]:
 def evaluate(result: Result, slo: dict) -> dict[str, bool]:
     checks = {
         "p95": result.p95_ms <= slo["complete_run_p95_ms"],
-        "failures": result.failure_rate <= slo["max_failure_rate"],
+        "failures": result.failure_rate < slo["max_failure_rate"],
         "submit": result.submit_p95_ms is None or result.submit_p95_ms <= slo["submit_p95_ms"],
     }
     checks["met"] = all(checks.values())
@@ -120,7 +120,7 @@ def render_markdown(results: list[Result], slo: dict) -> str:
         f"SLO ({slo['status']}"
         + (f", declared {slo['declared_at']} by {slo['declared_by']}" if slo.get("declared_at") else "")
         + f"): complete-run p95 <= {slo['complete_run_p95_ms'] / 1000:g} s, POST /runs p95 <= "
-        f"{slo['submit_p95_ms']} ms, failure rate <= {slo['max_failure_rate']:.0%}.",
+        f"{slo['submit_p95_ms']} ms, failure rate < {slo['max_failure_rate']:.0%}.",
         "A *complete run* is measured from `POST /runs` until the run reaches a terminal status.",
         "",
         "| Workers | Users | Runs | Failed | RPS | p50 (s) | p95 (s) | p99 (s) | POST p95 (ms) | SLO | Bottleneck |",

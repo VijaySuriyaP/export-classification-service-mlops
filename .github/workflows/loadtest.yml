@@ -1,0 +1,95 @@
+name: Platform load baseline
+
+# Isolated fresh stacks prevent a saturated case contaminating the next case.
+# This is a one-model-call platform baseline, NOT a real-agent capacity claim.
+on:
+  push:
+    branches: [feature/platform-loadtest]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        workers: [1, 3]
+        users: [5, 20, 50, 100]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Confirm predeclared SLO
+        run: |
+          python -c "import json; s=json.load(open('loadtest/slo.json')); assert s['status']=='DECLARED' and s['declared_at'] and s['declared_by']"
+          mkdir -p loadtest/results
+      - name: Configure reproducible platform baseline
+        run: |
+          cp .env.example .env
+          sed -i 's|^AGENT_RUNNER=.*|AGENT_RUNNER=app.agents.stub_runner:StubAgentRunner|' .env
+          sed -i 's|^LLM_BASE_URL=.*|LLM_BASE_URL=http://llm-stub:8001/v1|' .env
+          sed -i 's|^STUB_LATENCY_MS=.*|STUB_LATENCY_MS=1500|' .env
+          sed -i 's|^STUB_LATENCY_JITTER_MS=.*|STUB_LATENCY_JITTER_MS=500|' .env
+          sed -i 's|^RUN_CACHE_TTL_SECONDS=.*|RUN_CACHE_TTL_SECONDS=0|' .env
+      - name: Start fresh stack
+        run: docker compose up -d --build --scale agent-worker=${{ matrix.workers }} --wait --wait-timeout 300
+      - name: Record measurement conditions (no secrets)
+        run: |
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "runner=$RUNNER_OS; hosted runner, shared infrastructure"
+            echo "workers=${{ matrix.workers }}; users=${{ matrix.users }}"
+            echo "runner_class=StubAgentRunner; model_calls_per_run=1"
+            echo "stub_delay_ms=1500; jitter_ms=500; cache=off"
+            echo "measurement_seconds=300; polling_seconds=0.5; stop_timeout_seconds=180"
+            echo "Not a correctness test or real-agent capacity measurement."
+            lscpu
+            free -h
+            docker version
+            docker compose ps
+          } > loadtest/results/w${{ matrix.workers }}_u${{ matrix.users }}_conditions.txt
+          cp loadtest/slo.json loadtest/results/slo.json
+      - name: Measure complete runs for five minutes
+        run: python scripts/run_loadtest.py --workers ${{ matrix.workers }} --users ${{ matrix.users }} --duration 300
+      - name: Record resource snapshot and logs
+        if: always()
+        run: |
+          docker stats --no-stream > loadtest/results/w${{ matrix.workers }}_u${{ matrix.users }}_resources.txt
+          docker compose logs --no-color --tail 100 > loadtest/results/w${{ matrix.workers }}_u${{ matrix.users }}_logs.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: baseline-w${{ matrix.workers }}-u${{ matrix.users }}
+          path: loadtest/results/
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  report:
+    needs: measure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: baseline-w*
+          path: loadtest/results
+          merge-multiple: true
+      - name: Generate combined report
+        run: |
+          python scripts/loadtest_report.py loadtest/results --out loadtest/results/report.md
+          {
+            echo '> Platform-only baseline: StubAgentRunner, one model call per run. Not real-agent capacity.'
+            echo ''
+            cat loadtest/results/report.md
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: platform-baseline-report
+          path: loadtest/results/

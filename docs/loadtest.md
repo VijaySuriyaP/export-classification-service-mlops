@@ -2,6 +2,20 @@
 
 Owner: platform workstream. Target and rationale: [`slo.md`](slo.md). Machine-readable target: `loadtest/slo.json`.
 
+## Remote execution without local Docker
+
+`.github/workflows/loadtest.yml` runs isolated fresh stacks on GitHub-hosted Linux runners:
+one and three workers, each at 5, 20, 50 and 100 users, for five measured minutes after ramp-up.
+It records the commit, hardware, software, stub delay and workload in each artifact. A combined
+`platform-baseline-report` artifact contains CSVs, server-side measurements and `report.md`.
+
+This workflow deliberately uses `StubAgentRunner`, one model call per run with 1500 ms mean delay
+and 500 ms configured jitter, cache disabled. It is a **platform baseline**, not evidence of the
+real agents' capacity or classification correctness. Results must be rerun with representative
+agent calls and controlled stub responses before making an integrated-system capacity claim.
+Hosted-runner variability also limits comparisons across separate jobs.
+If no tested level misses the SLO, the measured failure concurrency remains unknown.
+
 ## 0. Declare the SLO first
 
 The brief requires the p95 target to be set **before** measuring anything. `scripts/run_loadtest.py` enforces
@@ -16,7 +30,7 @@ this: it refuses to run while `loadtest/slo.json` has `"status": "PROPOSED"`.
 ```bash
 cp .env.example .env            # Windows: Copy-Item .env.example .env
 docker compose up -d --build --wait
-python scripts/run_loadtest.py --workers 1,3 --users 5,10,20,40 --duration 180
+python scripts/run_loadtest.py --workers 1,3 --users 5,10,20,40 --duration 300
 ```
 
 For each (workers, users) pair the script scales `agent-worker`, waits for the queue to drain, runs Locust for
