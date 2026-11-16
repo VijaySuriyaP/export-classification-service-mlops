@@ -139,3 +139,18 @@ def test_committed_slo_file_is_still_only_proposed():
         assert slo["declared_at"] and slo["declared_by"], "a DECLARED SLO needs declared_at and declared_by"
     else:
         assert slo["status"] == "PROPOSED"
+
+
+def test_busy_ratio_excludes_non_worker_services(monkeypatch):
+    runner = _module("run_loadtest")
+    queries = []
+
+    def scalar(base, query):
+        queries.append(query)
+        return 0.9
+
+    monkeypatch.setattr(runner, "prom_scalar", scalar)
+    result = runner.collect_prometheus("http://unused", 300)
+    busy_query = next(q for q in queries if "ecs_worker_busy" in q)
+    assert "job='agent-worker'" in busy_query
+    assert result["worker_busy_ratio"] == 0.9
