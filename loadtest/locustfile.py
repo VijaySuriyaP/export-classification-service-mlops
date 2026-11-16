@@ -32,6 +32,8 @@ DESCRIPTIONS = [
     "Plastic hair comb, moulded, for personal use.",
     "Cast iron cooking pot with enamel coating.",
 ]
+if os.getenv("LOADTEST_DESCRIPTION"):
+    DESCRIPTIONS = [os.environ["LOADTEST_DESCRIPTION"]]
 
 
 class ClassificationUser(HttpUser):

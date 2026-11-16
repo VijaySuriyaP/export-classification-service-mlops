@@ -17,6 +17,7 @@ venv/
 data/
 *.log
 loadtest/results/
+loadtest/fixtures/
 
 # Course brief (kept locally, not part of the repository)
 MiniProject_07_Export_Classification_Check.pdf

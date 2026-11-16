@@ -1,0 +1,97 @@
+name: Agent platform load and cache comparison
+
+on:
+  push:
+    branches: [feature/platform-final-validation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - {workers: 1, users: 5, cache: 0}
+          - {workers: 1, users: 20, cache: 0}
+          - {workers: 1, users: 80, cache: 0}
+          - {workers: 3, users: 5, cache: 0}
+          - {workers: 3, users: 20, cache: 0}
+          - {workers: 3, users: 80, cache: 0}
+          - {workers: 3, users: 20, cache: 3600}
+    env:
+      COMPOSE_FILE: compose.yaml:loadtest/compose.agents.yaml
+      TEST_CACHE_TTL: ${{ matrix.cache }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare controlled workload
+        run: |
+          python -c "import json; s=json.load(open('loadtest/slo.json')); assert s['status']=='DECLARED'"
+          cp .env.example .env
+          sed -i 's|^TOOL_TIMEOUT_S=.*|TOOL_TIMEOUT_S=60|' .env
+          mkdir -p loadtest/fixtures loadtest/results
+          chmod 777 loadtest/fixtures loadtest/results
+          docker compose build api agent-worker llm-stub web
+          docker compose run --rm --no-deps agent-worker python -m scripts.prepare_agent_load_fixture
+      - name: Start real agents with stub model responses
+        run: docker compose up -d --scale agent-worker=${{ matrix.workers }} --wait --wait-timeout 300
+      - name: Assert actual two-agent path before measurement
+        run: python scripts/check_agent_load_path.py
+      - name: Save conditions
+        run: |
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "scope=real LangGraph runner and FAISS retrieval; scripted model approvals; not classification evaluation"
+            echo "workers=${{ matrix.workers }} users=${{ matrix.users }} cache_ttl=${{ matrix.cache }}"
+            echo "two model calls, 1500ms mean each, jitter=500ms; initial+verification path, no research loop"
+            echo "Repeated identical product; cached case is a prewarmed best-case hit workload."
+            echo "stub token counts are character-based estimates; actual provider spend is zero."
+            echo "tool_timeout=60s; duration=300s after ramp; stop_timeout=180s; polling=0.5s"
+            lscpu
+            free -h
+            docker version
+            docker compose ps
+          } > loadtest/results/conditions.txt
+          cp loadtest/slo.json loadtest/results/slo.json
+          cp loadtest/fixtures/responses.json loadtest/results/responses.json
+      - name: Measure
+        run: python scripts/run_loadtest.py --workers ${{ matrix.workers }} --users ${{ matrix.users }} --duration 300
+      - name: Save resource snapshot and logs
+        if: always()
+        run: |
+          docker stats --no-stream > loadtest/results/resources.txt
+          docker compose logs --no-color --tail 100 > loadtest/results/logs.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: agents-w${{ matrix.workers }}-u${{ matrix.users }}-cache${{ matrix.cache }}
+          path: loadtest/results/
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
+
+  report:
+    needs: measure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: agents-w*
+          path: loadtest/agent-results
+      - name: Build agent and cache report
+        run: python scripts/agent_load_report.py loadtest/agent-results
+      - name: Job summary
+        run: cat loadtest/agent-results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: agent-platform-final-report
+          path: loadtest/agent-results/
