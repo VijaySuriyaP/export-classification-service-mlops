@@ -3,6 +3,13 @@ name: Agent platform load and cache comparison
 on:
   push:
     branches: [feature/platform-final-validation]
+    paths:
+      - "app/**"
+      - "loadtest/**"
+      - "scripts/**"
+      - "docker/**"
+      - "requirements/**"
+      - "compose.yaml"
   workflow_dispatch:
 
 permissions:
