@@ -54,7 +54,7 @@ def collect_prometheus(base: str, window_s: int) -> dict:
     return {
         "window_s": window_s,
         "queue_wait_p95_s": prom_scalar(base, f"histogram_quantile(0.95, sum(increase(ecs_run_queue_wait_seconds_bucket[{w}])) by (le))"),
-        "worker_busy_ratio": prom_scalar(base, f"avg(avg_over_time(ecs_worker_busy[{w}]))"),
+        "worker_busy_ratio": prom_scalar(base, f"avg(avg_over_time(ecs_worker_busy{{job='agent-worker'}}[{w}]))"),
         "api_post_p95_s": prom_scalar(base, "histogram_quantile(0.95, sum(increase("
                                             f"ecs_http_request_duration_seconds_bucket{{method='POST',route='/runs'}}[{w}])) by (le))"),
         "run_p95_s": prom_scalar(base, f"histogram_quantile(0.95, sum(increase(ecs_run_end_to_end_seconds_bucket[{w}])) by (le))"),

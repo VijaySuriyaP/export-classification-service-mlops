@@ -1,0 +1,93 @@
+commit=f341d81d27c4021221b450f7496d88e1d3400ef8
+runner=Linux; hosted runner, shared infrastructure
+workers=3; users=5
+runner_class=StubAgentRunner; model_calls_per_run=1
+stub_delay_ms=1500; jitter_ms=500; cache=off
+measurement_seconds=300; polling_seconds=0.5; stop_timeout_seconds=180
+Not a correctness test or real-agent capacity measurement.
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           48 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  4
+On-line CPU(s) list:                     0-3
+Vendor ID:                               AuthenticAMD
+Model name:                              AMD EPYC 9V74 80-Core Processor
+CPU family:                              25
+Model:                                   17
+Thread(s) per core:                      2
+Core(s) per socket:                      2
+Socket(s):                               1
+Stepping:                                1
+BogoMIPS:                                5192.28
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology tsc_reliable nonstop_tsc cpuid extd_apicid aperfmperf tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves user_shstk avx512_bf16 clzero xsaveerptr rdpru arat npt nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm
+Virtualization:                          AMD-V
+Hypervisor vendor:                       Microsoft
+Virtualization type:                     full
+L1d cache:                               64 KiB (2 instances)
+L1i cache:                               64 KiB (2 instances)
+L2 cache:                                2 MiB (2 instances)
+L3 cache:                                32 MiB (1 instance)
+NUMA node(s):                            1
+NUMA node0 CPU(s):                       0-3
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Not affected
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Not affected
+Vulnerability Spec rstack overflow:      Vulnerable: Safe RET, no microcode
+Vulnerability Spec store bypass:         Vulnerable
+Vulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:                Mitigation; Retpolines; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Vulnerable: No microcode
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Not affected
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       1.5Gi        10Gi        45Mi       4.2Gi        14Gi
+Swap:          3.0Gi          0B       3.0Gi
+Client: Docker Engine - Community
+ Version:           28.0.4
+ API version:       1.48
+ Go version:        go1.23.7
+ Git commit:        b8034c0
+ Built:             Tue Mar 25 15:07:16 2025
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          28.0.4
+  API version:      1.48 (minimum version 1.24)
+  Go version:       go1.23.7
+  Git commit:       6430e49
+  Built:            Tue Mar 25 15:07:16 2025
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.4.2
+  GitCommit:        b7a25261e029d68978bbf290df0a62fc819b3c51
+ runc:
+  Version:          1.5.2
+  GitCommit:        v1.5.2-0-g29dd3dc2
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+NAME                                     IMAGE                                COMMAND                  SERVICE          CREATED          STATUS                    PORTS
+export-classification-agent-worker-1     export-classification-agent-worker   "python -m app.worke…"   agent-worker     18 seconds ago   Up 12 seconds (healthy)   9100/tcp
+export-classification-agent-worker-2     export-classification-agent-worker   "python -m app.worke…"   agent-worker     18 seconds ago   Up 11 seconds (healthy)   9100/tcp
+export-classification-agent-worker-3     export-classification-agent-worker   "python -m app.worke…"   agent-worker     18 seconds ago   Up 11 seconds (healthy)   9100/tcp
+export-classification-api-1              export-classification-api            "uvicorn --factory a…"   api              18 seconds ago   Up 12 seconds (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+export-classification-grafana-1          grafana/grafana:11.3.0               "/run.sh"                grafana          18 seconds ago   Up Less than a second     0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+export-classification-jaeger-1           jaegertracing/all-in-one:1.62.0      "/go/bin/all-in-one-…"   jaeger           18 seconds ago   Up 17 seconds             4317-4318/tcp, 5775/udp, 5778/tcp, 9411/tcp, 14250/tcp, 14268/tcp, 6831-6832/udp, 0.0.0.0:16686->16686/tcp, [::]:16686->16686/tcp
+export-classification-llm-stub-1         export-classification-llm-stub       "uvicorn app.llm_stu…"   llm-stub         18 seconds ago   Up 17 seconds (healthy)   0.0.0.0:8001->8001/tcp, [::]:8001->8001/tcp
+export-classification-prometheus-1       prom/prometheus:v2.55.1              "/bin/prometheus --c…"   prometheus       18 seconds ago   Up 11 seconds (healthy)   0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+export-classification-redis-1            redis:7.4-alpine                     "docker-entrypoint.s…"   redis            18 seconds ago   Up 17 seconds (healthy)   6379/tcp
+export-classification-redis-exporter-1   oliver006/redis_exporter:v1.66.0     "/redis_exporter"        redis-exporter   18 seconds ago   Up 12 seconds             9121/tcp
+export-classification-web-1              export-classification-web            "/docker-entrypoint.…"   web              18 seconds ago   Up 6 seconds (healthy)    0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp

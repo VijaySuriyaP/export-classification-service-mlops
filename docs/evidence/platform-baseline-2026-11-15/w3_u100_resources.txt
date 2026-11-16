@@ -1,0 +1,12 @@
+CONTAINER ID   NAME                                     CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+f42b78672d6a   export-classification-api-1              0.10%     66.78MiB / 15.61GiB   0.42%     81.4MB / 130MB    0B / 0B           7
+2e41d1090840   export-classification-grafana-1          0.11%     73.51MiB / 15.61GiB   0.46%     9.23MB / 1.65MB   0B / 38.9MB       14
+082002f0cfc8   export-classification-prometheus-1       0.09%     43.61MiB / 15.61GiB   0.27%     12.1MB / 555kB    0B / 1.83MB       10
+3ed5b225e617   export-classification-web-1              0.00%     4.367MiB / 15.61GiB   0.03%     2.4kB / 126B      0B / 4.1kB        5
+3e08fb1b1a65   export-classification-agent-worker-2     0.01%     52.95MiB / 15.61GiB   0.33%     905kB / 2.82MB    0B / 0B           4
+960f99a76b1d   export-classification-agent-worker-3     0.28%     52.88MiB / 15.61GiB   0.33%     900kB / 2.82MB    0B / 0B           4
+7f75ab9e575f   export-classification-redis-exporter-1   0.00%     8.32MiB / 15.61GiB    0.05%     1.6MB / 828kB     0B / 0B           10
+c98958658f64   export-classification-agent-worker-1     0.01%     53.09MiB / 15.61GiB   0.33%     911kB / 2.84MB    0B / 0B           4
+c3a696d7aac3   export-classification-jaeger-1           0.01%     783.4MiB / 15.61GiB   4.90%     61.8MB / 7.76MB   0B / 0B           10
+84acc8fe5228   export-classification-redis-1            0.34%     7.445MiB / 15.61GiB   0.05%     16.7MB / 58.7MB   1.63MB / 12.9MB   6
+cf770ce1c9d9   export-classification-llm-stub-1         0.11%     40.13MiB / 15.61GiB   0.25%     569kB / 739kB     0B / 0B           6

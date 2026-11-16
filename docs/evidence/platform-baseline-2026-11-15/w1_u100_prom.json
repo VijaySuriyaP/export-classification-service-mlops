@@ -1,0 +1,7 @@
+{
+  "window_s": 310,
+  "queue_wait_p95_s": 177.0,
+  "worker_busy_ratio": 0.4838709677419355,
+  "api_post_p95_s": 0.005999999999999993,
+  "run_p95_s": 177.0
+}
