@@ -64,3 +64,25 @@ def test_agent_report_rejects_incomplete_matrix(tmp_path):
     report = module("agent_load_report")
     with pytest.raises(ValueError, match="Incomplete"):
         report.build_report(tmp_path)
+
+
+def test_saved_report_is_reproducible_from_raw_evidence():
+    report = module("agent_load_report")
+    evidence = ROOT / "docs/evidence/agent-platform-2026-11-16"
+    assert report.build_report(evidence) == (evidence / "report.md").read_text(encoding="utf-8")
+
+
+def test_each_saved_preflight_used_real_two_agent_path():
+    evidence = ROOT / "docs/evidence/agent-platform-2026-11-16"
+    preflights = list(evidence.glob("agents-*/preflight.json"))
+    assert len(preflights) == 7
+    for file in preflights:
+        data = json.loads(file.read_text(encoding="utf-8"))
+        run = data["run"]
+        assert run["status"] == "completed" and not run["cache_hit"]
+        assert run["usage"]["llm_calls"] == 2
+        assert run["usage"]["tool_calls"] >= 1
+        assert not run["result"]["policy_adjustments"]
+        assert {e.get("agent") for e in data["events"] if e["kind"] == "llm_call"} == {
+            "classifier", "verifier",
+        }

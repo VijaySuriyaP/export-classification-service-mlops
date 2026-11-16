@@ -2,6 +2,71 @@
 
 Owner: NIKHIL (PES1UG24AM311).
 
+## Recorded results (2026-11-16)
+
+Completed [Actions run 43795668764](https://github.com/VijaySuriyaP/export-classification-service-mlops/actions/runs/43795668764)
+at tested commit `6370648`. All seven measurement jobs and the combined-report job completed.
+The premeasurement SLO declaration is unchanged (`0ae73ce`, 2026-11-15).
+
+Full generated report and raw evidence:
+[`evidence/agent-platform-2026-11-16/`](evidence/agent-platform-2026-11-16/).
+The original report and counter sidecars are retained; verbose logs remain in the Actions artifact.
+
+| Workers | Users | Client attempts finished | Client failures | p95 (s) | SLO |
+|---:|---:|---:|---:|---:|---|
+| 1 | 5 | 103 | 0 | 15 | met |
+| 1 | 20 | 118 | 0 | 61 | missed |
+| 1 | 80 | 198 | 137 | 180 | missed |
+| 3 | 5 | 275 | 0 | 4.5 | met |
+| 3 | 20 | 317 | 0 | 20 | met |
+| 3 | 80 | 374 | 0 | 81 | missed |
+
+The first **tested** failure level is 20 users with one worker, and 80 with three.
+Exact boundaries are only bracketed (5–20 and 20–80); this does not identify an exact
+maximum user count. At 20 users, scaling increases throughput approximately 3.04x
+and reduces p95 from 61 to 20 seconds.
+
+**Do not interpret the overloaded 1-worker/80-user RPS as successful throughput.**
+137 of its 198 completed attempts were client timeouts after 180 seconds, not completed
+classification responses. The reported 0.41 attempts/s includes these failures, and its
+180-second p95 is timeout-censored, not a p95 of successful run completion. The failure
+CSV records that cause. Requests that time out client-side are not automatically cancelled
+on the server, which can leave work queued until the isolated stack is torn down.
+
+The worker-capacity diagnosis is supported by the worker-scoped busy ratio (about 96%
+at 3 workers/20 users), substantial queue wait, fast API submissions (5–29 ms across
+cases), and roughly linear scaling at the 20-user load. Prometheus quantiles remain
+approximations and the accounting window includes the completion tail.
+
+### Cache and cost result (3 workers, 20 users)
+
+| Setting | p95 | Model calls/server run | Estimated tokens/server run | Hit ratio |
+|---|---:|---:|---:|---:|
+| Cache off | 20 s | 2 | 4089 | 0% (cache disabled) |
+| Prewarmed cache on | 0.51 s | 0 | 0 | 100% |
+
+This is a **97.5% latency reduction** for a best-case repeated identical request,
+not an estimate of production hit rate. The accounting counters excluded preflight.
+Uncached estimated tokens per run: 3875 prompt + 214 completion.
+The classifier contributed 2129 estimated tokens/run; verifier 1960.
+Thus the classifier was the larger token contributor (not an observed dollar cost driver).
+Actual model-provider spend, including cost per 100 runs, is **USD 0** in both cases.
+For nonzero provider prices, a counterfactual estimate per 100 uncached runs is
+`387.5 * prompt_USD_per_1K + 21.4 * completion_USD_per_1K`; this formula is not
+a claim about Cohere billing. Stub tokens are character-based estimates.
+
+## Platform deliverable status
+
+- API contracts, validation/quarantine, asynchronous queue and polling: implemented and tested.
+- Timeouts, retries/backoff, circuit breaker, safe degradation: implemented and covered by CI.
+- Worker heartbeat fix: merged; long-running and expired-worker regression tests pass.
+- Compose, health checks, logs/correlation IDs, traces, metrics/dashboard: CI stack checks pass.
+- SLO, baseline and real two-agent approval-path load/scaling report: recorded above.
+- Cache latency and estimated token/cost effects: recorded above.
+
+These remote platform deliverables are ready for team review. This is **not a claim that
+the entire project or presentation is verified**. Remaining team checks are listed below.
+
 ## Reproducible remote tests
 
 The workflow `.github/workflows/agent-loadtest.yml` uses

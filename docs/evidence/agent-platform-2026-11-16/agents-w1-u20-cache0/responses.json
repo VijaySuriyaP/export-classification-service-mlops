@@ -1,0 +1,34 @@
+{
+  "[[stub:classifier]]": {
+    "outcome": "classify",
+    "hs_code": "9617",
+    "heading_title": "PERFORMANCE FIXTURE: vacuum vessels",
+    "gri_applied": [
+      "GRI 1"
+    ],
+    "notes_considered": [],
+    "reasoning_summary": "Scripted load-test response; not a legal determination.",
+    "citations": [
+      {
+        "chunk_id": "c3ef0500d9272e1f",
+        "source_id": "customs-tariff-chapter-96-2025-06-30",
+        "locator": "Page 7",
+        "quote": "VACUUM FLASKS AND OTHER\nVACUUM VESSELS, COMPLETE;\nPARTS THEREOF OTHER THAN\nGLASS INNERS\n*961700\n-\nVacuum flasks and other vacuum vessels,\nkg.\n20%\n-\nco"
+      }
+    ],
+    "export_policy": null,
+    "clarification_questions": [],
+    "reason": null
+  },
+  "[[stub:verifier]]": {
+    "decision": "approve",
+    "code_supported": true,
+    "gri_supported": true,
+    "notes_supported": true,
+    "citations_supported": true,
+    "export_policy_supported": null,
+    "issues": [],
+    "follow_up_query": null,
+    "reason": "Scripted performance fixture, not semantic evaluation."
+  }
+}

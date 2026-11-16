@@ -1,0 +1,18 @@
+{
+  "window_s": 310,
+  "queue_wait_p95_s": 19.384453781512605,
+  "worker_busy_ratio": 0.9623655913978495,
+  "api_post_p95_s": 0.0048195970695970695,
+  "run_p95_s": 19.831615120274915,
+  "accounting": {
+    "runs": 320.0,
+    "model_calls": 640.0,
+    "prompt_tokens": 1240000.0,
+    "completion_tokens": 68480.0,
+    "cost_usd": 0.0,
+    "cache_hits": 0.0,
+    "cache_misses": 0.0,
+    "classifier_tokens": 681280.0,
+    "verifier_tokens": 627200.0
+  }
+}
