@@ -61,6 +61,29 @@ def collect_prometheus(base: str, window_s: int) -> dict:
     }
 
 
+def accounting_snapshot(base: str) -> dict:
+    """Counters scoped to workers only; take deltas around each measured case."""
+    expressions = {
+        "runs": "sum(ecs_runs_finished_total{job='agent-worker'})",
+        "model_calls": "sum(ecs_llm_calls_total{job='agent-worker',outcome='success'})",
+        "prompt_tokens": "sum(ecs_llm_tokens_total{job='agent-worker',kind='prompt'})",
+        "completion_tokens": "sum(ecs_llm_tokens_total{job='agent-worker',kind='completion'})",
+        "cost_usd": "sum(ecs_llm_cost_usd_total{job='agent-worker'})",
+        "cache_hits": "sum(ecs_run_cache_total{job='agent-worker',result='hit'})",
+        "cache_misses": "sum(ecs_run_cache_total{job='agent-worker',result='miss'})",
+        "classifier_tokens": "sum(ecs_llm_tokens_total{job='agent-worker',agent='classifier'})",
+        "verifier_tokens": "sum(ecs_llm_tokens_total{job='agent-worker',agent='verifier'})",
+    }
+    return {name: prom_scalar(base, query) or 0.0 for name, query in expressions.items()}
+
+
+def accounting_delta(before: dict, after: dict) -> dict:
+    delta = {key: after[key] - before.get(key, 0) for key in after}
+    if any(value < 0 for value in delta.values()):
+        raise RuntimeError("Counters reset during measurement; refusing invalid accounting.")
+    return delta
+
+
 def wait_queue_drained(api: str, timeout_s: int = 120) -> None:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
@@ -98,6 +121,8 @@ def main() -> int:
         time.sleep(10)  # let Prometheus discover the replicas
         for users in (int(u) for u in args.users.split(",")):
             wait_queue_drained(args.api)
+            time.sleep(10)  # ensure the preflight counters have been scraped
+            before = accounting_snapshot(args.prometheus)
             prefix = f"w{workers}_u{users}"
             rate = args.spawn_rate or max(1.0, users / 5)
             ramp = int(users / rate) + 1
@@ -110,6 +135,7 @@ def main() -> int:
                 raise RuntimeError(f"Locust failed to execute (exit {completed.returncode})")
             time.sleep(10)  # one more scrape so the window is covered
             prom = collect_prometheus(args.prometheus, args.duration + 10)
+            prom["accounting"] = accounting_delta(before, accounting_snapshot(args.prometheus))
             (RESULTS / f"{prefix}_prom.json").write_text(json.dumps(prom, indent=2), encoding="utf-8")
             print(f"{prefix}: {prom}", flush=True)
 
